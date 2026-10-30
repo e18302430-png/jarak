@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { q, one } from './db.js';
 import { sendSms } from './sms.js';
-import { normPhone, validSaudiMobile, checkSecret, token, code4, HttpError, bad, limit } from './util.js';
+import { normPhone, validSaudiMobile, checkSecret, hashSecret, token, code4, HttpError, bad, limit } from './util.js';
 
 const hashCode = (phone, code) => crypto.createHash('sha256').update(phone + ':' + code + ':' + (process.env.OTP_PEPPER || 'jarak')).digest('hex');
 
@@ -47,6 +47,7 @@ export async function verifyOtp(rawPhone, code, role = 'customer') {
     const [t, col] = ROLE_TABLE[role];
     const r = await one(`select * from ${t} where ${col}=$1`, [phone]);
     if (!r) throw bad('الرقم مو مسجّل عندنا، تواصل مع إدارة جارك');
+    if (role === 'driver') checkDriverOk(r);
     return { token: await newSession(role, r.id, 60), row: r };
   }
   let c = await one('select * from customers where phone=$1', [phone]);
@@ -80,7 +81,7 @@ export function requireRole(role) {
       req.sub = s.subject_id; req.sessionToken = t;
       if (role === 'customer') req.customer = await one('select * from customers where id=$1', [s.subject_id]);
       if (role === 'store') { req.store = await one('select * from stores where id=$1', [s.subject_id]); if (!req.store || req.store.suspended) return res.status(403).json({ error: 'الحساب موقوف' }); }
-      if (role === 'driver') { req.driver = await one('select * from drivers where id=$1', [s.subject_id]); if (!req.driver || req.driver.suspended) return res.status(403).json({ error: 'الحساب موقوف' }); }
+      if (role === 'driver') { req.driver = await one('select * from drivers where id=$1', [s.subject_id]); if (!req.driver || req.driver.suspended || (req.driver.status && req.driver.status !== 'active')) return res.status(403).json({ error: 'الحساب غير مفعّل' }); }
       next();
     } catch (e) { next(e); }
   };
@@ -89,4 +90,47 @@ export function requireRole(role) {
 export async function adminLogin(tokenGiven) {
   if (!process.env.ADMIN_TOKEN || tokenGiven !== process.env.ADMIN_TOKEN) throw new HttpError(401, 'غير مصرح');
   return newSession('admin', null, 7);
+}
+
+/* ---------- الكباتن: تسجيل بكلمة سر وحساب تحت المراجعة ---------- */
+export const DRIVER_STATUS_MSG = {
+  pending: 'طلبك تحت المراجعة. بنبلغك برسالة أول ما نفعّل حسابك، وعادة ما ياخذ أكثر من يوم.',
+  rejected: 'ما قدرنا نقبل طلبك هالمرة. تواصل مع إدارة جارك لو عندك سؤال.'
+};
+export function checkDriverOk(d) {
+  if (d.suspended) throw new HttpError(403, 'الحساب موقوف، تواصل مع إدارة جارك');
+  if (d.status && d.status !== 'active') { const e = new HttpError(403, (DRIVER_STATUS_MSG[d.status] || 'الحساب غير مفعّل') + (d.status === 'rejected' && d.review_note ? ' (السبب: ' + d.review_note + ')' : '')); e.code = 'driver_' + d.status; throw e; }
+}
+export function validPassword(p) {
+  p = String(p || '');
+  if (p.length < 6) throw bad('كلمة السر لازم 6 حروف أو أرقام على الأقل');
+  if (p.length > 64) throw bad('كلمة السر طويلة');
+  return p;
+}
+export async function driverApply(b, ip) {
+  limit('apply:' + ip, 5, 60 * 60e3);
+  const phone = normPhone(b.phone), name = String(b.name || '').trim().slice(0, 60);
+  if (name.length < 3) throw bad('اكتب اسمك الكامل');
+  if (!validSaudiMobile(phone)) throw bad('اكتب رقم جوال سعودي صحيح يبدأ بـ 05');
+  const pass = validPassword(b.password);
+  const old = await one('select id, status from drivers where phone=$1', [phone]);
+  if (old && old.status !== 'rejected') throw bad(old.status === 'pending' ? 'عندك طلب تحت المراجعة بهالرقم. سجّل دخول عشان تشوف حالته' : 'الرقم هذا مسجّل. سجّل دخول بكلمة السر');
+  const vehicle = ['motorbike', 'car', 'bicycle'].includes(b.vehicle) ? b.vehicle : 'motorbike';
+  const vals = [name, phone, hashSecret(pass), vehicle, String(b.area || '').trim().slice(0, 80) || null];
+  const d = old
+    ? await one(`update drivers set name=$1, pin_hash=$3, has_password=true, vehicle=$4, home_area=$5, status='pending', review_note=null, created_at=now() where phone=$2 returning id, name`, vals)
+    : await one(`insert into drivers (name, phone, pin_hash, has_password, vehicle, home_area, status, company) values ($1,$2,$3,true,$4,$5,'pending',null) returning id, name`, vals);
+  return d;
+}
+export async function driverPasswordLogin(rawPhone, password, ip) {
+  const phone = normPhone(rawPhone);
+  if (!validSaudiMobile(phone)) throw bad('اكتب رقم جوالك صح، يبدأ بـ 05');
+  limit('dpw:' + ip + ':' + phone, 8, 15 * 60e3);
+  const d = await one('select * from drivers where phone=$1', [phone]);
+  if (!d || !d.has_password || !checkSecret(String(password || ''), d.pin_hash)) throw new HttpError(401, 'الجوال أو كلمة السر غلط');
+  checkDriverOk(d);
+  return newSession('driver', d.id, 90);
+}
+export async function setDriverPassword(driverId, password) {
+  await q('update drivers set pin_hash=$2, has_password=true where id=$1', [driverId, hashSecret(validPassword(password))]);
 }

@@ -295,3 +295,10 @@ create table if not exists tab_entries (
 -- صور البقالات تنحفظ في قاعدة البيانات نفسها، عشان تشتغل على أي استضافة حتى المجانية
 alter table product_photos add column if not exists data bytea;
 alter table product_photos add column if not exists mime text;
+
+-- تسجيل الكباتن بأنفسهم: الحساب يبدأ «تحت المراجعة» لين الإدارة تفعّله
+alter table drivers add column if not exists status text not null default 'active';
+alter table drivers add column if not exists has_password boolean not null default false;
+alter table drivers add column if not exists vehicle text;
+alter table drivers add column if not exists home_area text;
+alter table drivers add column if not exists review_note text;

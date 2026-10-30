@@ -79,6 +79,27 @@
 .collect{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:#FFF4D6;font-weight:800}
 .collect b{font-size:20px;font-weight:900}.collect small{display:block;font-weight:600;color:var(--muted);font-size:12.5px}
 .collect.paid{background:var(--green-50,#E7F7EE);color:var(--green)}
+
+.seg{display:grid;grid-template-columns:1fr 1fr;background:#F1F3F7;border-radius:14px;padding:4px;gap:4px}
+.seg button{border:0;background:none;padding:11px 8px;border-radius:11px;font:inherit;font-weight:800;font-size:15px;color:var(--muted);cursor:pointer}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(17,17,17,.08)}
+.vchips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.vchips label{position:relative;border:1.5px solid var(--line);border-radius:14px;padding:12px 6px;text-align:center;font-weight:800;font-size:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+.vchips label span{font-size:24px;line-height:1}
+.vchips input{position:absolute;opacity:0;pointer-events:none}
+.vchips label:has(input:checked){border-color:var(--green,#12A150);background:#E9F8EF;color:#0B7A3B}
+.pw{position:relative}.pw input{padding-left:70px!important}
+.pw .eye{position:absolute;left:8px;top:50%;transform:translateY(-50%);border:0;background:none;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;padding:6px}
+.linkbtn{border:0;background:none;color:var(--muted);font:inherit;font-size:13.5px;font-weight:700;text-decoration:underline;cursor:pointer;padding:4px;align-self:center}
+.pend{text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.pend .big{width:72px;height:72px;border-radius:50%;background:#FFF4D6;display:grid;place-items:center;font-size:36px}
+.tl{list-style:none;padding:0;margin:4px 0 0;width:100%;text-align:start;display:flex;flex-direction:column;gap:10px}
+.tl li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px}
+.tl li i{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:900;font-size:13px;background:#EEF0F4;color:var(--muted)}
+.tl li.done i{background:#12A150;color:#fff}.tl li.now i{background:#F2A93B;color:#fff;animation:pulse 1.6s infinite}
+.tl li small{display:block;color:var(--muted);font-size:12.5px}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(242,169,59,.2)}}
+.setpw{background:#FFF8E6;border:1px solid #F5DFA6;border-radius:18px;padding:14px;margin-top:12px;display:flex;flex-direction:column;gap:10px}
 </style>
 </head>
 <body>
@@ -108,13 +129,49 @@
       </div>
     </div>
     <div class="stack" style="gap:16px">
-      <form class="login-card" id="loginForm">
-        <h2>دخول المندوب</h2>
-        <label class="field">جوالك<input type="tel" id="lPhone" class="ltr" placeholder="05xxxxxxxx" required autocomplete="tel"></label>
-        <div id="lCodeWrap" hidden class="stack" style="gap:8px"><small class="muted" id="lSent"></small><input type="text" id="lCode" class="in ltr code-in" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="····" aria-label="رمز الدخول"><div class="row" style="justify-content:space-between"><button type="button" class="btn btn-ghost btn-sm" id="lEdit">تعديل الرقم</button><button type="button" class="btn btn-ghost btn-sm" id="lResend" disabled>أرسل الرمز مرة ثانية</button></div></div>
-        <div class="err" id="lErr"></div>
-        <button class="btn btn-primary btn-block btn-lg" type="submit">أرسل رمز الدخول</button>
-      </form>
+      <div class="login-card" id="authCard">
+        <div class="seg" role="tablist"><button type="button" class="on" data-tab="in">دخول</button><button type="button" data-tab="up">سجّل ككابتن</button></div>
+
+        <form id="pwForm" class="stack" style="gap:12px">
+          <label class="field">جوالك<input type="tel" id="pPhone" class="ltr" placeholder="05xxxxxxxx" required autocomplete="username"></label>
+          <label class="field">كلمة السر<div class="pw"><input type="password" id="pPass" class="ltr" required autocomplete="current-password" placeholder="••••••"><button type="button" class="eye">إظهار</button></div></label>
+          <div class="err" id="pErr"></div>
+          <button class="btn btn-primary btn-block btn-lg" type="submit">دخول</button>
+          <button type="button" class="linkbtn" id="toOtp">نسيت كلمة السر؟ ادخل برمز SMS</button>
+        </form>
+
+        <form id="upForm" class="stack" style="gap:12px" hidden>
+          <p class="muted" style="font-size:14px;margin:0">سجّل بياناتك، وفريق جارك يراجعها ويفعّل حسابك. بعدها تدخل برقمك وكلمة السر.</p>
+          <label class="field">اسمك الكامل<input type="text" name="name" required maxlength="60" autocomplete="name" placeholder="مثل: محمد أحمد"></label>
+          <label class="field">جوالك<input type="tel" name="phone" class="ltr" required placeholder="05xxxxxxxx" autocomplete="tel"></label>
+          <label class="field">اختر كلمة سر<div class="pw"><input type="password" name="password" class="ltr" required minlength="6" autocomplete="new-password" placeholder="6 على الأقل"><button type="button" class="eye">إظهار</button></div></label>
+          <div class="field">وش توصّل عليه؟<div class="vchips">
+            <label><input type="radio" name="vehicle" value="motorbike" checked><span>🛵</span>دباب</label>
+            <label><input type="radio" name="vehicle" value="car"><span>🚗</span>سيارة</label>
+            <label><input type="radio" name="vehicle" value="bicycle"><span>🚲</span>سيكل</label>
+          </div></div>
+          <label class="field">وين ساكن؟ (الحي)<input type="text" name="area" maxlength="80" placeholder="اختياري"></label>
+          <div class="err" id="uErr"></div>
+          <button class="btn btn-primary btn-block btn-lg" type="submit">أرسل طلب الانضمام</button>
+        </form>
+
+        <div id="pendBox" class="pend" hidden>
+          <div class="big">⏳</div>
+          <h2 id="pendT" style="margin:0">طلبك تحت المراجعة</h2>
+          <p class="muted" id="pendP" style="margin:0;font-size:14.5px">استلمنا طلبك. بنبلغك برسالة أول ما نفعّل حسابك.</p>
+          <ol class="tl"><li class="done"><i>✓</i><span>سجّلت بياناتك</span></li><li class="now"><i>2</i><span>فريق جارك يراجع طلبك<small>عادة خلال يوم</small></span></li><li><i>3</i><span>نفعّل حسابك وتبدأ تستقبل مشاوير<small>تدخل برقمك وكلمة السر</small></span></li></ol>
+          <button type="button" class="btn btn-block" id="pendBack">رجوع للدخول</button>
+        </div>
+
+        <form id="loginForm" class="stack" style="gap:12px" hidden>
+          <p class="muted" style="font-size:14px;margin:0">نرسل رمز لجوالك، وبعد ما تدخل تقدر تغيّر كلمة السر.</p>
+          <label class="field">جوالك<input type="tel" id="lPhone" class="ltr" placeholder="05xxxxxxxx" required autocomplete="tel"></label>
+          <div id="lCodeWrap" hidden class="stack" style="gap:8px"><small class="muted" id="lSent"></small><input type="text" id="lCode" class="in ltr code-in" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="····" aria-label="رمز الدخول"><div class="row" style="justify-content:space-between"><button type="button" class="btn btn-ghost btn-sm" id="lEdit">تعديل الرقم</button><button type="button" class="btn btn-ghost btn-sm" id="lResend" disabled>أرسل الرمز مرة ثانية</button></div></div>
+          <div class="err" id="lErr"></div>
+          <button class="btn btn-primary btn-block btn-lg" type="submit">أرسل رمز الدخول</button>
+          <button type="button" class="linkbtn" id="toPw">رجوع للدخول بكلمة السر</button>
+        </form>
+      </div>
       <div id="wHood"></div>
     </div>
   </div>
@@ -151,9 +208,37 @@ function showLogin(){ $('#login').hidden = false; $('#app').hidden = true; calc(
     J.hood($('#wHood'), p, { you: { lat: p.zone.lat - 0.004, lng: p.zone.lng + 0.005 }, caption: 'كل المشاوير داخل حي ' + esc(p.zone.name) });
   }).catch(function(){}); }
 J.otpLogin('/api/driver', function(t){ J.store.set(J.tokenKey, t); boot(); });
+/* الدخول بكلمة السر، والتسجيل، وحالة المراجعة */
+function authView(v){ ['pwForm', 'upForm', 'pendBox', 'loginForm'].forEach(function(id){ $('#' + id).hidden = id !== v; });
+  $$('.seg button').forEach(function(b){ b.classList.toggle('on', (b.getAttribute('data-tab') === 'up') === (v === 'upForm')); });
+  $('.seg').hidden = v === 'pendBox'; }
+$$('.seg button').forEach(function(b){ b.addEventListener('click', function(){ authView(b.getAttribute('data-tab') === 'up' ? 'upForm' : 'pwForm'); }); });
+$$('.pw .eye').forEach(function(b){ b.addEventListener('click', function(){ var i = b.previousElementSibling; i.type = i.type === 'password' ? 'text' : 'password'; b.textContent = i.type === 'password' ? 'إظهار' : 'إخفاء'; }); });
+$('#toOtp').addEventListener('click', function(){ $('#lPhone').value = $('#pPhone').value; authView('loginForm'); });
+$('#toPw').addEventListener('click', function(){ authView('pwForm'); });
+$('#pendBack').addEventListener('click', function(){ authView('pwForm'); });
+function showPending(msg, title){ $('#pendT').textContent = title || 'طلبك تحت المراجعة'; $('#pendP').textContent = msg; authView('pendBox'); }
+$('#pwForm').addEventListener('submit', function(e){ e.preventDefault(); J.unlockSound(); var btn = this.querySelector('[type=submit]'); btn.disabled = true; $('#pErr').textContent = '';
+  J.api('/api/driver/login', { method: 'POST', body: { phone: $('#pPhone').value, password: $('#pPass').value } })
+    .then(function(r){ J.store.set(J.tokenKey, r.token); J.store.set('jarak-driver-phone', $('#pPhone').value); boot(); })
+    .catch(function(err){ if (err.body && err.body.code === 'driver_pending') showPending(err.message); else if (err.body && err.body.code === 'driver_rejected') showPending(err.message, 'ما انقبل الطلب'); else $('#pErr').textContent = err.message; })
+    .finally(function(){ btn.disabled = false; }); });
+$('#upForm').addEventListener('submit', function(e){ e.preventDefault(); var f = this, b = {}, btn = f.querySelector('[type=submit]'); new FormData(f).forEach(function(v, k){ b[k] = v; });
+  btn.disabled = true; $('#uErr').textContent = '';
+  J.api('/api/driver/apply', { method: 'POST', body: b }).then(function(){ $('#pPhone').value = b.phone; J.store.set('jarak-driver-phone', b.phone); f.reset();
+      showPending('أهلاً ' + b.name.split(' ')[0] + '، استلمنا طلبك. بنرسل لك رسالة على ' + b.phone + ' أول ما نفعّل حسابك، وبعدها تدخل برقمك وكلمة السر.'); })
+    .catch(function(err){ $('#uErr').textContent = err.message; }).finally(function(){ btn.disabled = false; }); });
+(function(){ var ph = J.store.get('jarak-driver-phone'); if (ph) $('#pPhone').value = ph; })();
+function paintSetPw(){
+  var box = $('#setPw'); if (!box) { box = document.createElement('div'); box.id = 'setPw'; $('#pushBar').after(box); }
+  if (!ME || ME.driver.has_password) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="setpw"><b>اعمل كلمة سر لحسابك</b><small class="muted">عشان تدخل المرة الجاية برقمك وكلمة السر بدون رسائل.</small><div class="pw"><input type="password" id="npw" class="in ltr" minlength="6" placeholder="6 على الأقل" autocomplete="new-password"><button type="button" class="eye">إظهار</button></div><button type="button" class="btn btn-primary" id="npwGo">احفظ كلمة السر</button></div>';
+  box.querySelector('.eye').onclick = function(){ var i = $('#npw'); i.type = i.type === 'password' ? 'text' : 'password'; };
+  $('#npwGo').onclick = function(){ J.api('/api/driver/password', { method: 'POST', body: { password: $('#npw').value } }).then(function(){ ME.driver.has_password = true; paintSetPw(); J.toast('حفظنا كلمة السر'); }).catch(function(err){ J.toast(err.message); }); };
+}
 function boot(){
   J.api('/api/driver/me').then(function(j){
-    ME = j; $('#login').hidden = true; $('#app').hidden = false; $('#dName').textContent = j.driver.name;
+    ME = j; $('#login').hidden = true; $('#app').hidden = false; $('#dName').textContent = j.driver.name; paintSetPw();
     paint(); load(); if (es) es.close();
     es = J.sse('/api/driver/stream', function(m){ if (m.type === 'pos') { ME.driver.lat = m.lat; ME.driver.lng = m.lng; paintMap(); return; } if (m.type === 'offer') J.alarm(45, 'مشوار جديد'); if (m.type === 'job') { J.sound('success'); J.vibrate([150, 80, 150]); } load(); });
     if (j.driver.online) startGps();

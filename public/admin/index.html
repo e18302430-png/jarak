@@ -94,6 +94,11 @@
 .ps-it{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:start;padding:10px 14px;border:0;border-bottom:1px solid #F0F2F6;background:none;font:inherit;cursor:pointer}
 .ps-it:hover{background:#F6F8EC}.ps-it small{color:#7A8094;font-size:12px}
 .pickmap{height:380px;border-radius:14px;overflow:hidden;margin-top:8px;background:#EEF1F5}
+
+.nbadge{background:#EB3B2F;color:#fff;border-radius:999px;font-size:11.5px;padding:1px 7px;margin-inline-start:4px}
+.apl{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:10px}
+.apl .ap{border:1px solid #E3E6EE;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.apl .ap .row{gap:8px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -114,7 +119,7 @@
     <a href="#zone" data-v="zone"><span data-icon="map"></span>الحي</a>
     <a href="#orders" data-v="orders"><span data-icon="receipt"></span>الطلبات</a>
     <a href="#stores" data-v="stores"><span data-icon="store"></span>البقالات</a>
-    <a href="#drivers" data-v="drivers"><span data-icon="bike"></span>المناديب</a>
+    <a href="#drivers" data-v="drivers"><span data-icon="bike"></span>المناديب <b class="nbadge" id="dBadge" hidden></b></a>
     <a href="#money" data-v="money"><span data-icon="wallet"></span>التحويلات</a>
     <a href="#complaints" data-v="complaints"><span data-icon="alert"></span>الشكاوى</a>
     <a href="#config" data-v="config"><span data-icon="gear"></span>الإعدادات</a>
@@ -178,10 +183,12 @@
     <button class="btn btn-primary" type="submit" style="margin-top:12px">أضف البقالة</button><p class="muted" style="font-size:13px;margin-top:8px">نرسل لصاحب البقالة رسالة فيها رابط تطبيقه، ويدخل برقمه برمز يوصله SMS.</p></form>
   </section>
   <section data-view="drivers" hidden>
+    <div class="card sec" id="applyBox" hidden style="margin-top:0;margin-bottom:14px"><h2>كباتن ينتظرون موافقتك</h2><p class="muted" style="font-size:14px">سجّلوا بأنفسهم من تطبيق المندوب. كلّمهم وتأكد من هويتهم ورخصتهم قبل ما تقبلهم.</p><div class="apl" id="applyL"></div></div>
     <div class="card tw" style="margin-top:0;overflow:hidden"><table id="driversT"></table></div>
     <form class="card sec" id="driverForm"><h2>إضافة مندوب</h2><div class="form">
       <label class="field">الاسم<input type="text" name="name" required></label>
       <label class="field">الجوال<input type="tel" name="phone" class="ltr" required></label>
+      <label class="field">كلمة سر (اختياري)<input type="text" name="password" class="ltr" minlength="6" placeholder="لو تبيه يدخل بدون رسائل"></label>
       
       <label class="field">الشركة<input type="text" name="company" value="بوارق الشرق"></label>
     </div><button class="btn btn-primary" type="submit" style="margin-top:12px">أضف المندوب</button><p class="muted" style="font-size:13px;margin-top:8px">نرسل للمندوب رسالة فيها رابط تطبيقه، ويدخل برقمه برمز يوصله SMS.</p></form>
@@ -235,8 +242,8 @@ $('#loginForm').addEventListener('submit', function(e){ e.preventDefault(); J.ap
 $('#logout').addEventListener('click', function(){ J.store.set(J.tokenKey, null); showLogin(); });
 var es = null, CFG = null;
 function boot(){ $('#login').hidden = true; $('#app').hidden = false;
-  J.api('/api/admin/config').then(function(r){ CFG = r.config; $('#zonePill').textContent = 'حي ' + CFG.zone_name; route(); });
-  if (es) es.close(); es = J.sse('/api/admin/stream', function(m){ var v = cur(); if (m && m.type === 'driver') { if (v === 'live') liveDriver(m); return; } if (v === 'live') loadLive(); if (v === 'kpis') loadKpis(); if (v === 'orders') loadOrders(); }); }
+  J.api('/api/admin/config').then(function(r){ CFG = r.config; $('#zonePill').textContent = 'حي ' + CFG.zone_name; route(); loadDrivers(); });
+  if (es) es.close(); es = J.sse('/api/admin/stream', function(m){ var v = cur(); if (m && m.type === 'driver') { if (v === 'live') liveDriver(m); return; } if (m && m.type === 'driver_apply') { J.sound('chime'); J.toast('كابتن جديد سجّل: ' + (m.name || '') + '. شوف المناديب'); loadDrivers(); return; } if (v === 'live') loadLive(); if (v === 'kpis') loadKpis(); if (v === 'orders') loadOrders(); }); }
 var VIEWS = ['live', 'kpis', 'profit', 'zone', 'orders', 'stores', 'drivers', 'money', 'complaints', 'config'];
 function cur(){ var v = location.hash.slice(1) || 'kpis'; return VIEWS.indexOf(v) >= 0 ? v : 'kpis'; }
 function route(){ var v = cur(); $$('[data-view]').forEach(function(s){ s.hidden = s.getAttribute('data-view') !== v; }); $$('.tabs a').forEach(function(a){ if (a.getAttribute('data-v') === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
@@ -449,7 +456,28 @@ $('#storeForm').addEventListener('submit', function(e){ e.preventDefault(); var 
   if (!b.lat || !b.lng) { J.toast('حدد مكان البقالة على الخريطة أول'); return; }
   var btn = f.querySelector('[type=submit]'); btn.disabled = true; btn.textContent = 'نحفظ البقالة…';
   J.api('/api/admin/stores', { method: 'POST', body: b }).finally(function(){ btn.disabled = false; btn.textContent = 'أضف البقالة'; }).then(function(){ J.toast('أضفنا البقالة. صاحبها يدخل من /store'); f.reset(); if (spin) { spin.remove(); spin = null; } $('#sFind').value = ''; loadStores(); }).catch(function(err){ J.toast(err.message); }); });
-function loadDrivers(){ J.api('/api/admin/drivers').then(function(r){ $('#driversT').innerHTML = '<tr><th>المندوب</th><th>الحالة</th><th>وصّل</th><th>تقييم</th></tr>' + r.drivers.map(function(d){ return '<tr><td><b>' + esc(d.name) + '</b><br><small class="muted"><span class="ltr">' + esc(String(d.phone).replace(/^966/, '0')) + '</span>' + (d.company ? '، ' + esc(d.company) : '') + '</small></td><td>' + (d.online ? '<span class="pill ok">متصل</span>' : '<span class="pill">غير متصل</span>') + '</td><td class="num">' + d.delivered + '</td><td class="num">' + (d.rating_n ? (d.rating_sum / d.rating_n).toFixed(1) : '—') + '</td></tr>'; }).join(''); }); }
+var VEH = { motorbike: '🛵 دباب', car: '🚗 سيارة', bicycle: '🚲 سيكل' };
+function loadDrivers(){ J.api('/api/admin/drivers').then(function(r){
+  var pend = r.drivers.filter(function(d){ return d.status === 'pending'; }), rest = r.drivers.filter(function(d){ return d.status !== 'pending'; });
+  $('#dBadge').hidden = !pend.length; $('#dBadge').textContent = pend.length;
+  $('#applyBox').hidden = !pend.length;
+  $('#applyL').innerHTML = pend.map(function(d){ var ph = String(d.phone).replace(/^966/, '0'); return '<div class="ap" data-id="' + d.id + '"><b style="font-size:17px">' + esc(d.name) + '</b><span class="muted" style="font-size:13.5px"><span class="ltr">' + esc(ph) + '</span> · ' + (VEH[d.vehicle] || '') + (d.home_area ? ' · ساكن في ' + esc(d.home_area) : '') + '</span><small class="muted">سجّل ' + J.ago(d.created_at) + '</small><div class="row"><a class="btn btn-sm" href="tel:' + esc(ph) + '">📞 اتصل</a><a class="btn btn-sm" target="_blank" rel="noopener" href="https://wa.me/' + esc(d.phone) + '">واتساب</a></div><div class="row"><button class="btn btn-primary btn-sm" data-dok="active">✅ اقبله</button><button class="btn btn-sm" data-dok="rejected">رفض</button></div></div>'; }).join('');
+  $('#driversT').innerHTML = '<tr><th>المندوب</th><th>الحالة</th><th>وصّل</th><th>تقييم</th><th></th></tr>' + rest.map(function(d){
+    var st = d.status === 'rejected' ? '<span class="pill">مرفوض</span>' : d.suspended ? '<span class="pill warn">موقوف</span>' : d.online ? '<span class="pill ok">متصل</span>' : '<span class="pill">غير متصل</span>';
+    return '<tr data-id="' + d.id + '"><td><b>' + esc(d.name) + '</b><br><small class="muted"><span class="ltr">' + esc(String(d.phone).replace(/^966/, '0')) + '</span>' + (d.vehicle ? ' · ' + (VEH[d.vehicle] || '') : '') + (d.company ? '، ' + esc(d.company) : '') + '</small></td><td>' + st + '</td><td class="num">' + d.delivered + '</td><td class="num">' + (d.rating_n ? (d.rating_sum / d.rating_n).toFixed(1) : '—') + '</td><td><div class="row" style="gap:6px;flex-wrap:nowrap">'
+      + (d.status === 'rejected' ? '<button class="btn btn-sm" data-dok="active">اقبله</button>' : '<button class="btn btn-sm" data-dsusp="' + (!d.suspended) + '">' + (d.suspended ? 'رجّعه' : 'أوقفه') + '</button>')
+      + '<button class="btn btn-sm btn-ghost" data-dpw>كلمة سر جديدة</button></div></td></tr>'; }).join('');
+}); }
+function driverAct(e){
+  var b = e.target.closest('[data-dok],[data-dsusp],[data-dpw]'); if (!b) return; var id = b.closest('[data-id]').getAttribute('data-id');
+  if (b.hasAttribute('data-dok')) { var st = b.getAttribute('data-dok'), body = { status: st };
+    if (st === 'rejected') { var n = prompt('سبب الرفض (يوصله في رسالة، اختياري):', ''); if (n === null) return; body.note = n; }
+    b.disabled = true; J.api('/api/admin/drivers/' + id, { method: 'PATCH', body: body }).then(function(){ J.toast(st === 'active' ? 'فعّلنا الكابتن وأرسلنا له رسالة' : 'رفضنا الطلب'); loadDrivers(); }).catch(function(err){ b.disabled = false; J.toast(err.message); }); return; }
+  if (b.hasAttribute('data-dsusp')) { J.api('/api/admin/drivers/' + id, { method: 'PATCH', body: { suspended: b.getAttribute('data-dsusp') === 'true' } }).then(loadDrivers); return; }
+  if (b.hasAttribute('data-dpw')) { if (!confirm('نسوي له كلمة سر جديدة؟ القديمة توقف، ويطلع من التطبيق.')) return;
+    J.api('/api/admin/drivers/' + id, { method: 'PATCH', body: { reset_password: true } }).then(function(r){ prompt('كلمة السر الجديدة، انسخها وأرسلها له:', r.password); }).catch(function(err){ J.toast(err.message); }); }
+}
+$('#driversT').addEventListener('click', driverAct); $('#applyL').addEventListener('click', driverAct);
 $('#driverForm').addEventListener('submit', function(e){ e.preventDefault(); var f = this, b = {}; new FormData(f).forEach(function(v, k){ b[k] = v; });
   J.api('/api/admin/drivers', { method: 'POST', body: b }).then(function(){ J.toast('أضفنا المندوب. يدخل من /driver'); f.reset(); loadDrivers(); }).catch(function(err){ J.toast(err.message); }); });
 function loadMoney(){ J.api('/api/admin/settlements').then(function(r){ $('#settleT').innerHTML = '<tr><th>الجهة</th><th>النوع</th><th>المبلغ</th><th>الحالة</th><th></th></tr>' + (r.settlements.map(function(s){ return '<tr data-id="' + s.id + '"><td><b>' + esc(s.party_name || '') + '</b></td><td>' + (s.party === 'store' ? 'بقالة' : 'مندوب') + '</td><td class="num"><b>' + J.sar(s.amount) + '</b></td><td><span class="pill ' + (s.status === 'paid' ? 'ok' : 'warn') + '">' + (s.status === 'paid' ? 'تحوّل' : 'مستحق') + '</span></td><td>' + (s.status === 'paid' ? '' : '<button class="btn btn-sm btn-primary" data-paid>حوّلته</button>') + '</td></tr>'; }).join('') || '<tr><td colspan="5" class="muted">ما فيه تحويلات</td></tr>'); }); }

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { initDb, q, one, dbKind } from './db.js';
 import { sse, emit } from './events.js';
 import { cfg, setCfg, DEFAULTS, TEXT_DEFAULTS } from './config.js';
-import { startOtp, verifyOtp, adminLogin, requireRole } from './auth.js';
+import { startOtp, verifyOtp, adminLogin, requireRole, driverApply, driverPasswordLogin, setDriverPassword } from './auth.js';
 import { listing, quote, inZone, zoneOf } from './catalog.js';
 import { respondOffer, respondDriver, sweep, clearTimers } from './dispatch.js';
 import * as O from './orders.js';
@@ -50,6 +50,13 @@ export async function createApp() {
   app.post('/api/store/otp', wrap(async (req, res) => res.json(await startOtp(req.body.phone, req.ip, 'store'))));
   app.post('/api/store/verify', wrap(async (req, res) => res.json({ token: (await verifyOtp(req.body.phone, req.body.code, 'store')).token })));
   app.post('/api/driver/otp', wrap(async (req, res) => res.json(await startOtp(req.body.phone, req.ip, 'driver'))));
+  app.post('/api/driver/apply', wrap(async (req, res) => {
+    const d = await driverApply(req.body || {}, req.ip);
+    emit('admin', { type: 'driver_apply', name: d.name });
+    pushTo('admin', null, { title: 'كابتن جديد يبي ينضم', body: d.name + ' سجّل وينتظر موافقتك', url: '/admin/#drivers', tag: 'apply' }).catch(() => {});
+    res.json({ ok: true, status: 'pending' });
+  }));
+  app.post('/api/driver/login', wrap(async (req, res) => res.json({ token: await driverPasswordLogin(req.body.phone, req.body.password, req.ip) })));
   app.post('/api/driver/verify', wrap(async (req, res) => res.json({ token: (await verifyOtp(req.body.phone, req.body.code, 'driver')).token })));
   app.post('/api/admin/login', wrap(async (req, res) => res.json({ token: await adminLogin(req.body.token) })));
   app.post('/api/payments/moyasar/webhook', wrap(async (req, res) => { await O.moyasarWebhook(req.body); res.json({ ok: true }); }));
@@ -244,6 +251,7 @@ export async function createApp() {
   // ---------- driver ----------
   const dr = express.Router(); dr.use(requireRole('driver'));
   dr.post('/push', wrap(async (req, res) => res.json(await subscribe('driver', req.driver.id, req.body))));
+  dr.post('/password', wrap(async (req, res) => { await setDriverPassword(req.driver.id, req.body.password); res.json({ ok: true }); }));
   dr.get('/me', wrap(async (req, res) => {
     const d = req.driver; const { pin_hash, ...pub } = d;
     const today = await one(`select count(*)::int n, coalesce(sum(driver_pay),0)::float pay from orders where driver_id=$1 and status='delivered' and delivered_at::date = now()::date`, [d.id]);
@@ -354,17 +362,36 @@ export async function createApp() {
     await q('update stores set suspended=coalesce($2,suspended), commission_pct=$3 where id=$1', [req.params.id, typeof b.suspended === 'boolean' ? b.suspended : null, b.commission_pct === '' || b.commission_pct == null ? null : num(b.commission_pct)]);
     res.json({ ok: true });
   }));
-  ad.get('/drivers', wrap(async (_req, res) => res.json({ drivers: await q(`select id, name, phone, company, online, seen_at, rating_sum, rating_n, (select count(*)::int from orders o where o.driver_id=d.id and o.status='delivered') as delivered from drivers d order by created_at`) })));
+  ad.get('/drivers', wrap(async (_req, res) => res.json({ drivers: await q(`select id, name, phone, company, online, seen_at, rating_sum, rating_n, suspended, status, vehicle, home_area, review_note, has_password, created_at, (select count(*)::int from orders o where o.driver_id=d.id and o.status='delivered') as delivered from drivers d order by (status='pending') desc, created_at`) })));
   ad.post('/drivers', wrap(async (req, res) => {
     const phone = normPhone(req.body.phone);
     if (!req.body.name || !validSaudiMobile(phone)) throw bad('اسم المندوب وجواله مطلوبين');
     const dupD = await one('select name from drivers where phone=$1', [phone]);
     if (dupD) throw bad(`الرقم هذا مسجّل للمندوب «${dupD.name}»`);
-    const d = await one('insert into drivers (name, phone, pin_hash, company) values ($1,$2,$3,$4) returning id, name', [req.body.name, phone, hashSecret(crypto.randomBytes(16).toString('hex')), req.body.company || null]);
+    const pw = String(req.body.password || '').trim();
+    if (pw && pw.length < 6) throw bad('كلمة السر لازم 6 على الأقل، أو اتركها فاضية');
+    const d = await one('insert into drivers (name, phone, pin_hash, has_password, company) values ($1,$2,$3,$4,$5) returning id, name', [req.body.name, phone, hashSecret(pw || crypto.randomBytes(16).toString('hex')), !!pw, req.body.company || null]);
     sendSms(phone, `هلا ${req.body.name}! صرت كابتن في جارك. ادخل من ${baseUrl(req)}/driver/ برقم جوالك هذا، ويوصلك رمز الدخول.`).catch(e => console.error('[sms]', e.message));
     res.json({ driver: d });
   }));
-  ad.patch('/drivers/:id', wrap(async (req, res) => { await q('update drivers set suspended=$2, online=case when $2 then false else online end where id=$1', [req.params.id, !!req.body.suspended]); res.json({ ok: true }); }));
+  ad.patch('/drivers/:id', wrap(async (req, res) => {
+    const b = req.body || {};
+    if (b.status) {
+      if (!['active', 'rejected'].includes(b.status)) throw bad('حالة غير معروفة');
+      const d = await one(`update drivers set status=$2, review_note=$3, online=false where id=$1 returning name, phone`, [req.params.id, b.status, b.note ? String(b.note).slice(0, 140) : null]);
+      if (!d) throw new HttpError(404, 'المندوب غير موجود');
+      const link = baseUrl(req) + '/driver/';
+      sendSms(d.phone, b.status === 'active' ? `أهلاً ${d.name}، انقبلت في كابتن جارك! ادخل من ${link} برقم جوالك وكلمة السر.` : `${d.name}، ما قدرنا نقبل طلبك في كابتن جارك هالمرة.` + (b.note ? ' السبب: ' + b.note : '')).catch(e => console.error('[sms]', e.message));
+      return res.json({ ok: true });
+    }
+    if (b.reset_password) {
+      const pass = String(crypto.randomInt(100000, 1000000));
+      await setDriverPassword(req.params.id, pass);
+      await q('delete from sessions where role=$1 and subject_id=$2', ['driver', req.params.id]);
+      return res.json({ ok: true, password: pass });
+    }
+    await q('update drivers set suspended=$2, online=case when $2 then false else online end where id=$1', [req.params.id, !!b.suspended]); res.json({ ok: true });
+  }));
   const pubCfg = (c) => { const { gemini_api_key, ...rest } = c; return { ...rest, gemini_key_set: !!gemini_api_key || !!process.env.GEMINI_API_KEY, gemini_key_hint: gemini_api_key ? '••••' + gemini_api_key.slice(-4) : process.env.GEMINI_API_KEY ? 'من متغيرات السيرفر' : '' }; };
   ad.get('/config', wrap(async (_req, res) => res.json({ config: pubCfg(await cfg()), defaults: DEFAULTS })));
   ad.patch('/config', wrap(async (req, res) => res.json({ config: pubCfg(await setCfg(req.body || {})) })));

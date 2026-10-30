@@ -483,3 +483,23 @@ test('guest can price a basket before signing in; admin can broadcast to custome
   const r = await call('POST', '/api/admin/push/broadcast', adm, { title: 'جارك', body: 'التوصيل مجاني الليلة' });
   assert.ok(r.sent >= 0);
 });
+
+test('a captain signs up himself, waits for review, and logs in with a password once approved', async () => {
+  const phone = '0559876543';
+  await assert.rejects(call('POST', '/api/driver/apply', null, { name: 'سعد', phone, password: '123' }), /6/);
+  await call('POST', '/api/driver/apply', null, { name: 'سعد العتيبي', phone, password: 'secret12', vehicle: 'car', area: 'الراكة' });
+  await assert.rejects(call('POST', '/api/driver/apply', null, { name: 'سعد العتيبي', phone, password: 'secret12' }), /تحت المراجعة/);
+  const e = await call('POST', '/api/driver/login', null, { phone, password: 'secret12' }).catch(x => x);
+  assert.equal(e.status, 403); assert.equal(e.body.code, 'driver_pending');
+  await assert.rejects(call('POST', '/api/driver/login', null, { phone, password: 'wrongpass' }), /غلط/);
+  const adm = (await call('POST', '/api/admin/login', null, { token: 'admin-secret' })).token;
+  const d = (await call('GET', '/api/admin/drivers', adm)).drivers.find(x => x.vehicle === 'car' && x.name === 'سعد العتيبي');
+  assert.equal(d.status, 'pending');
+  await call('PATCH', '/api/admin/drivers/' + d.id, adm, { status: 'active' });
+  const t = (await call('POST', '/api/driver/login', null, { phone, password: 'secret12' })).token;
+  const me = await call('GET', '/api/driver/me', t);
+  assert.equal(me.driver.name, 'سعد العتيبي'); assert.ok(!me.driver.pin_hash);
+  const np = (await call('PATCH', '/api/admin/drivers/' + d.id, adm, { reset_password: true })).password;
+  await assert.rejects(call('GET', '/api/driver/me', t), /سجّل|انتهت/);
+  assert.ok((await call('POST', '/api/driver/login', null, { phone, password: np })).token);
+});
