@@ -127,14 +127,54 @@
       </div>
     </div>
     <div class="stack" style="gap:16px">
-      <form class="login-card" id="loginForm">
-        <h2>دخول البقالة</h2>
-        <label class="field">جوال صاحب البقالة<input type="tel" id="lPhone" class="ltr" placeholder="05xxxxxxxx" required autocomplete="tel"></label>
-        <div id="lCodeWrap" hidden class="stack" style="gap:8px"><small class="muted" id="lSent"></small><input type="text" id="lCode" class="in ltr code-in" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="····" aria-label="رمز الدخول"><div class="row" style="justify-content:space-between"><button type="button" class="btn btn-ghost btn-sm" id="lEdit">تعديل الرقم</button><button type="button" class="btn btn-ghost btn-sm" id="lResend" disabled>أرسل الرمز مرة ثانية</button></div></div>
-        <div class="err" id="lErr"></div>
-        <button class="btn btn-primary btn-block btn-lg" type="submit">أرسل رمز الدخول</button>
-        <p class="muted" style="font-size:13.5px">ما عندك حساب؟ فريق جارك يزورك ويجهّز لك الحساب والأسعار في نفس اليوم.</p>
-      </form>
+      <div class="login-card" id="authCard">
+        <div class="seg" role="tablist"><button type="button" class="on" data-tab="in">دخول</button><button type="button" data-tab="up">سجّل بقالتك</button></div>
+
+        <form id="pwForm" class="stack" style="gap:12px">
+          <label class="field">جوال صاحب البقالة<input type="tel" id="pPhone" class="ltr" placeholder="05xxxxxxxx" required autocomplete="username"></label>
+          <label class="field">كلمة السر<div class="pw"><input type="password" id="pPass" class="ltr" required autocomplete="current-password" placeholder="••••••"><button type="button" class="eye">إظهار</button></div></label>
+          <div class="err" id="pErr"></div>
+          <button class="btn btn-primary btn-block btn-lg" type="submit">دخول</button>
+          <button type="button" class="linkbtn" id="toOtp">نسيت كلمة السر؟ ادخل برمز SMS</button>
+        </form>
+
+        <form id="upForm" class="stack" style="gap:12px" hidden>
+          <p class="muted" style="font-size:14px;margin:0">سجّل بقالتك مجاناً. فريق جارك يراجع الطلب ويتواصل معك، وبعدها تبدأ تستقبل طلبات الحي.</p>
+          <label class="field">اسم البقالة<input type="text" name="name" required maxlength="60" placeholder="مثل: تموينات الريان"></label>
+          <label class="field">اسمك (صاحب البقالة)<input type="text" name="owner_name" required maxlength="60" autocomplete="name"></label>
+          <label class="field">جوالك<input type="tel" name="phone" class="ltr" required placeholder="05xxxxxxxx" autocomplete="tel"></label>
+          <label class="field">اختر كلمة سر<div class="pw"><input type="password" name="password" class="ltr" required minlength="6" autocomplete="new-password" placeholder="6 على الأقل"><button type="button" class="eye">إظهار</button></div></label>
+          <div class="field">مكان البقالة
+            <button type="button" class="btn btn-block" id="uMe" style="margin-top:6px">📍 أنا في البقالة الحين، خذ موقعي</button>
+            <div class="row" style="gap:8px;margin-top:8px"><input type="search" id="uLink" class="in" placeholder="أو الصق رابط موقعها من قوقل ماب" style="flex:1"><button type="button" class="btn btn-sm" id="uSat">🛰️</button></div>
+            <div id="uMap" class="pickmap" style="margin-top:8px"></div>
+            <small class="muted" id="uHint">اضغط على الخريطة على مكان البقالة، وتقدر تسحب الدبوس.</small>
+            <input type="hidden" name="lat"><input type="hidden" name="lng">
+          </div>
+          <label class="field">وصف المكان<input type="text" name="area" maxlength="120" placeholder="الشارع أو أقرب معلم"></label>
+          <label class="field">رقم السجل التجاري<input type="text" name="cr_number" class="ltr" inputmode="numeric" maxlength="12" placeholder="اختياري"></label>
+          <label class="row" style="gap:8px;font-size:14px"><input type="checkbox" name="self_delivery"> عندي عامل يوصّل للبيوت</label>
+          <div class="err" id="uErr"></div>
+          <button class="btn btn-primary btn-block btn-lg" type="submit">أرسل طلب الانضمام</button>
+        </form>
+
+        <div id="pendBox" class="pend" hidden>
+          <div class="big">⏳</div>
+          <h2 id="pendT" style="margin:0">طلبك تحت المراجعة</h2>
+          <p class="muted" id="pendP" style="margin:0;font-size:14.5px"></p>
+          <ol class="tl"><li class="done"><i>✓</i><span>سجّلت بقالتك</span></li><li class="now"><i>2</i><span>فريق جارك يتواصل معك ويراجع الطلب<small>عادة خلال يوم</small></span></li><li><i>3</i><span>نفعّل حسابك وتبدأ تستقبل الطلبات<small>أسعار مبدئية جاهزة، وتعدّلها براحتك</small></span></li></ol>
+          <button type="button" class="btn btn-block" id="pendBack">رجوع للدخول</button>
+        </div>
+
+        <form id="loginForm" class="stack" style="gap:12px" hidden>
+          <p class="muted" style="font-size:14px;margin:0">نرسل رمز لجوالك، وبعد ما تدخل تقدر تسوي كلمة سر.</p>
+          <label class="field">جوال صاحب البقالة<input type="tel" id="lPhone" class="ltr" placeholder="05xxxxxxxx" required autocomplete="tel"></label>
+          <div id="lCodeWrap" hidden class="stack" style="gap:8px"><small class="muted" id="lSent"></small><input type="text" id="lCode" class="in ltr code-in" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="····" aria-label="رمز الدخول"><div class="row" style="justify-content:space-between"><button type="button" class="btn btn-ghost btn-sm" id="lEdit">تعديل الرقم</button><button type="button" class="btn btn-ghost btn-sm" id="lResend" disabled>أرسل الرمز مرة ثانية</button></div></div>
+          <div class="err" id="lErr"></div>
+          <button class="btn btn-primary btn-block btn-lg" type="submit">أرسل رمز الدخول</button>
+          <button type="button" class="linkbtn" id="toPw">رجوع للدخول بكلمة السر</button>
+        </form>
+      </div>
       <div id="wHood"></div>
     </div>
     <div class="feats span">
@@ -191,6 +231,7 @@
 <div id="sheetHost"></div>
 <div class="toast" id="toast" role="status"></div>
 <script src="/shared.js"></script>
+<script src="/livemap.js"></script>
 <script>
 (function(){
 'use strict';
@@ -218,11 +259,64 @@ function showLogin(){
   }).catch(function(){});
 }
 J.otpLogin('/api/store', function(t){ J.store.set(J.tokenKey, t); boot(); });
+/* الدخول بكلمة السر، وتسجيل بقالة جديدة، وحالة المراجعة */
+function authView(v){ ['pwForm', 'upForm', 'pendBox', 'loginForm'].forEach(function(id){ $('#' + id).hidden = id !== v; });
+  $$('.seg button').forEach(function(b){ b.classList.toggle('on', (b.getAttribute('data-tab') === 'up') === (v === 'upForm')); });
+  $('.seg').hidden = v === 'pendBox'; if (v === 'upForm') initPick(); }
+$$('.seg button').forEach(function(b){ b.addEventListener('click', function(){ authView(b.getAttribute('data-tab') === 'up' ? 'upForm' : 'pwForm'); }); });
+$$('.pw .eye').forEach(function(b){ b.addEventListener('click', function(){ var i = b.previousElementSibling; i.type = i.type === 'password' ? 'text' : 'password'; b.textContent = i.type === 'password' ? 'إظهار' : 'إخفاء'; }); });
+$('#toOtp').addEventListener('click', function(){ $('#lPhone').value = $('#pPhone').value; authView('loginForm'); });
+$('#toPw').addEventListener('click', function(){ authView('pwForm'); });
+$('#pendBack').addEventListener('click', function(){ authView('pwForm'); });
+function showPending(msg, title){ $('#pendT').textContent = title || 'طلبك تحت المراجعة'; $('#pendP').textContent = msg; authView('pendBox'); }
+$('#pwForm').addEventListener('submit', function(e){ e.preventDefault(); J.unlockSound(); var btn = this.querySelector('[type=submit]'); btn.disabled = true; $('#pErr').textContent = '';
+  J.api('/api/store/login', { method: 'POST', body: { phone: $('#pPhone').value, password: $('#pPass').value } })
+    .then(function(r){ J.store.set(J.tokenKey, r.token); J.store.set('jarak-store-phone', $('#pPhone').value); boot(); })
+    .catch(function(err){ var c = err.body && err.body.code; if (c === 'store_pending') showPending(err.message); else if (c === 'store_rejected') showPending(err.message, 'ما انقبل الطلب'); else $('#pErr').textContent = err.message; })
+    .finally(function(){ btn.disabled = false; }); });
+var pick = null, pin = null;
+function initPick(){
+  if (pick) { setTimeout(function(){ pick.invalidateSize(); }, 60); return; }
+  J.loadLeaflet().then(function(L){ J.loadPublic().then(function(p){
+    var z = p.zone; pick = L.map($('#uMap'), { zoomControl: true, scrollWheelZoom: false }).setView([z.lat, z.lng], 15);
+    pick._base = L.tileLayer((p.tiles) || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, referrerPolicy: 'strict-origin-when-cross-origin', attribution: '© OpenStreetMap' }).addTo(pick);
+    pick.on('click', function(e){ putPin(e.latlng.lat, e.latlng.lng, true); });
+    setTimeout(function(){ pick.invalidateSize(); }, 80);
+  }); });
+}
+function putPin(lat, lng, noPan){
+  if (!pick) return; var f = $('#upForm'); f.elements.lat.value = lat; f.elements.lng.value = lng;
+  if (pin) pin.setLatLng([lat, lng]); else pin = L.marker([lat, lng], { draggable: true }).addTo(pick).on('dragend', function(e){ var q = e.target.getLatLng(); putPin(q.lat, q.lng, true); });
+  if (!noPan) pick.setView([lat, lng], 18);
+  $('#uHint').textContent = '✅ حددنا المكان. لو مو دقيق اسحب الدبوس على باب البقالة.';
+  J.api('/api/geo/rev?lat=' + lat + '&lng=' + lng).then(function(r){ var a = f.elements.area; if (!a.value || a._auto) { a.value = [r.street, r.name].filter(Boolean).join('، '); a._auto = true; } }).catch(function(){});
+}
+$('#upForm').elements.area.addEventListener('input', function(){ this._auto = false; });
+$('#uMe').addEventListener('click', function(){ var b = this; b.disabled = true; b.textContent = 'نحدد موقعك…';
+  J.myLocation().then(function(p){ putPin(p.lat, p.lng); }).catch(function(e){ J.toast(e.message); }).then(function(){ b.disabled = false; b.textContent = '📍 أنا في البقالة الحين، خذ موقعي'; }); });
+$('#uSat').addEventListener('click', function(){ if (!pick) return; if (pick._sat) { pick.removeLayer(pick._sat); pick._sat = null; return; }
+  pick._sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' }).addTo(pick); if (pick.getZoom() < 17) pick.setZoom(17); });
+$('#uLink').addEventListener('change', function(){ var v = this.value.trim(); if (!v) return; var ll = J.parseMapLink(v);
+  (ll ? Promise.resolve(ll) : J.api('/api/geo/maplink?u=' + encodeURIComponent(v))).then(function(p){ putPin(p.lat, p.lng); }).catch(function(e){ J.toast(e.message); }); });
+$('#upForm').addEventListener('submit', function(e){ e.preventDefault(); var f = this, b = {}, btn = f.querySelector('[type=submit]'); new FormData(f).forEach(function(v, k){ b[k] = v; }); b.self_delivery = f.elements.self_delivery.checked;
+  if (!b.lat) { $('#uErr').textContent = 'حدد مكان البقالة على الخريطة'; return; }
+  btn.disabled = true; $('#uErr').textContent = '';
+  J.api('/api/store/apply', { method: 'POST', body: b }).then(function(){ $('#pPhone').value = b.phone; J.store.set('jarak-store-phone', b.phone);
+      showPending('أهلاً ' + b.owner_name.split(' ')[0] + '، استلمنا طلب «' + b.name + '». فريق جارك بيكلمك على ' + b.phone + '، وأول ما نفعّل الحساب يوصلك رسالة وتدخل برقمك وكلمة السر.'); f.reset(); })
+    .catch(function(err){ $('#uErr').textContent = err.message; }).finally(function(){ btn.disabled = false; }); });
+(function(){ var ph = J.store.get('jarak-store-phone'); if (ph) $('#pPhone').value = ph; })();
+function paintSetPw(){
+  var box = $('#setPw'); if (!box) { box = document.createElement('div'); box.id = 'setPw'; $('#pushBar').after(box); }
+  if (!ME || ME.store.has_password) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="setpw"><b>اعمل كلمة سر لبقالتك</b><small class="muted">عشان تدخل المرة الجاية برقمك وكلمة السر بدون رسائل.</small><div class="pw"><input type="password" id="npw" class="in ltr" minlength="6" placeholder="6 على الأقل" autocomplete="new-password"><button type="button" class="eye">إظهار</button></div><button type="button" class="btn btn-primary" id="npwGo">احفظ كلمة السر</button></div>';
+  box.querySelector('.eye').onclick = function(){ var i = $('#npw'); i.type = i.type === 'password' ? 'text' : 'password'; };
+  $('#npwGo').onclick = function(){ J.api('/api/store/password', { method: 'POST', body: { password: $('#npw').value } }).then(function(){ ME.store.has_password = true; paintSetPw(); J.toast('حفظنا كلمة السر'); }).catch(function(err){ J.toast(err.message); }); };
+}
 
 function boot(){
   J.api('/api/store/me').then(function(j){
     ME = j; lang = j.store.worker_lang;
-    $('#login').hidden = true; $('#app').hidden = false; $('#sName').textContent = j.store.name;
+    $('#login').hidden = true; $('#app').hidden = false; $('#sName').textContent = j.store.name; paintSetPw();
     paintOpen(); paintStats(); paintSound(); J._awake = true; J.keepAwake(true); route(); loadProducts(true).then(function(){ loadOffers(); loadParts(); }); stream(); loadTabs();
   }).catch(function(){ showLogin(); });
 }

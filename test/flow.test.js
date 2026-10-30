@@ -146,14 +146,14 @@ test('nobody answers in 60s → next round; split basket when no single store ha
   // round 1 times out
   await q(`update offers set expires_at = now() - interval '1 second' where order_id=$1`, [order.id]);
   await sweep();
-  const r2 = await q(`select o.*, s.owner_phone from offers o join stores s on s.id=o.store_id where order_id=$1 and status='pending'`, [order.id]);
+  const r2 = await q(`select o.*, s.owner_phone from offers o join stores s on s.id=o.store_id where o.order_id=$1 and o.status='pending'`, [order.id]);
   assert.ok(r2.length && r2[0].round === 2, 'round 2 started');
   // first store takes what it has; then the rest goes to another store
   let guard = 0;
   while (guard++ < 6) {
     const o = await one('select status from orders where id=$1', [order.id]);
     if (o.status !== 'searching') break;
-    const pend = await q(`select o.*, s.owner_phone from offers o join stores s on s.id=o.store_id where order_id=$1 and status='pending'`, [order.id]);
+    const pend = await q(`select o.*, s.owner_phone from offers o join stores s on s.id=o.store_id where o.order_id=$1 and o.status='pending'`, [order.id]);
     if (!pend.length) { await sweep(); continue; }
     const t = await loginStore('0' + pend[0].owner_phone.slice(3));
     await call('POST', `/api/store/offers/${pend[0].id}`, t, { action: 'accept' });
@@ -172,7 +172,7 @@ test('partial accept + substitution approved (cheaper) and rejected (removed) bo
   const items = [{ product_id: milk, qty: 1 }, { product_id: lab, qty: 2 }, { product_id: egg, qty: 1 }, { product_id: water, qty: 1 }];
   const { order } = await call('POST', '/api/me/orders', token, { address_id: address.id, items });
   await call('POST', `/api/me/orders/${order.id}/pay-test`, token);
-  const off = await one(`select o.*, s.owner_phone from offers o join stores s on s.id=o.store_id where order_id=$1 and status='pending' order by created_at limit 1`, [order.id]);
+  const off = await one(`select o.*, s.owner_phone from offers o join stores s on s.id=o.store_id where o.order_id=$1 and o.status='pending' order by o.created_at limit 1`, [order.id]);
   const t = await loginStore('0' + off.owner_phone.slice(3));
   // store says eggs are missing
   await call('POST', `/api/store/offers/${off.id}`, t, { action: 'partial', missing: [egg] });
@@ -182,7 +182,7 @@ test('partial accept + substitution approved (cheaper) and rejected (removed) bo
   for (let i = 0; i < 6; i++) {
     const o = await one('select status from orders where id=$1', [order.id]);
     if (o.status !== 'searching') break;
-    const p = await one(`select o.*, s.owner_phone from offers o join stores s on s.id=o.store_id where order_id=$1 and status='pending' limit 1`, [order.id]);
+    const p = await one(`select o.*, s.owner_phone from offers o join stores s on s.id=o.store_id where o.order_id=$1 and o.status='pending' limit 1`, [order.id]);
     if (!p) { await sweep(); continue; }
     await call('POST', `/api/store/offers/${p.id}`, await loginStore('0' + p.owner_phone.slice(3)), { action: 'decline' });
   }
@@ -214,7 +214,7 @@ test('no store has it → order cancelled and fully refunded', async () => {
   const { order } = await call('POST', '/api/me/orders', token, { address_id: address.id, items });
   await call('POST', `/api/me/orders/${order.id}/pay-test`, token);
   for (let i = 0; i < 8; i++) {
-    const p = await one(`select o.*, s.owner_phone from offers o join stores s on s.id=o.store_id where order_id=$1 and status='pending' limit 1`, [order.id]);
+    const p = await one(`select o.*, s.owner_phone from offers o join stores s on s.id=o.store_id where o.order_id=$1 and o.status='pending' limit 1`, [order.id]);
     if (!p) { await sweep(); const o = await one('select status from orders where id=$1', [order.id]); if (o.status !== 'searching') break; continue; }
     await call('POST', `/api/store/offers/${p.id}`, await loginStore('0' + p.owner_phone.slice(3)), { action: 'decline' });
   }
@@ -502,4 +502,22 @@ test('a captain signs up himself, waits for review, and logs in with a password 
   const np = (await call('PATCH', '/api/admin/drivers/' + d.id, adm, { reset_password: true })).password;
   await assert.rejects(call('GET', '/api/driver/me', t), /سجّل|انتهت/);
   assert.ok((await call('POST', '/api/driver/login', null, { phone, password: np })).token);
+});
+
+test('a store owner signs up, waits for review, and is hidden from customers until approved', async () => {
+  const phone = '0558887766';
+  const body = { name: 'تموينات الريان', owner_name: 'خالد الدوسري', phone, password: 'shop1234', lat: HOME.lat + 0.001, lng: HOME.lng + 0.001, area: 'شارع الأمير' };
+  await assert.rejects(call('POST', '/api/store/apply', null, { ...body, lat: '' }), /مكان/);
+  await call('POST', '/api/store/apply', null, body);
+  const e = await call('POST', '/api/store/login', null, { phone, password: 'shop1234' }).catch(x => x);
+  assert.equal(e.status, 403); assert.equal(e.body.code, 'store_pending');
+  const s0 = await one("select id, suspended, status from stores where name='تموينات الريان'");
+  assert.equal(s0.status, 'pending'); assert.equal(s0.suspended, true);
+  assert.ok((await one('select count(*)::int n from store_products where store_id=$1', [s0.id])).n > 10, 'starter prices ready');
+  const adm = (await call('POST', '/api/admin/login', null, { token: 'admin-secret' })).token;
+  await call('PATCH', '/api/admin/stores/' + s0.id, adm, { status: 'active' });
+  const t = (await call('POST', '/api/store/login', null, { phone, password: 'shop1234' })).token;
+  const me = await call('GET', '/api/store/me', t);
+  assert.equal(me.store.name, 'تموينات الريان'); assert.ok(!me.store.pin_hash);
+  await call('PATCH', '/api/admin/stores/' + s0.id, adm, { suspended: true });
 });

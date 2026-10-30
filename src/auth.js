@@ -17,10 +17,10 @@ export async function startOtp(rawPhone, ip, role = 'customer') {
   limit('otp:' + role + ':' + phone, 1, 45e3);
   if (ROLE_TABLE[role]) {
     const [t, col] = ROLE_TABLE[role];
-    const row = await one(`select id, suspended from ${t} where ${col}=$1`, [phone]);
+    const row = await one(`select id, suspended, status, review_note from ${t} where ${col}=$1`, [phone]);
     // ما نقول إذا الرقم مسجّل أو لا (عشان محد يجرب أرقام)، بس ما نرسل رسالة لرقم غير مسجّل
     if (!row) return { phone, sent: true };
-    if (row.suspended) throw new HttpError(403, 'الحساب موقوف، تواصل مع إدارة جارك');
+    accountOk(role, row);
   }
   const code = code4();
   const key = otpKey(role, phone);
@@ -47,7 +47,7 @@ export async function verifyOtp(rawPhone, code, role = 'customer') {
     const [t, col] = ROLE_TABLE[role];
     const r = await one(`select * from ${t} where ${col}=$1`, [phone]);
     if (!r) throw bad('الرقم مو مسجّل عندنا، تواصل مع إدارة جارك');
-    if (role === 'driver') checkDriverOk(r);
+    accountOk(role, r);
     return { token: await newSession(role, r.id, 60), row: r };
   }
   let c = await one('select * from customers where phone=$1', [phone]);
@@ -133,4 +133,46 @@ export async function driverPasswordLogin(rawPhone, password, ip) {
 }
 export async function setDriverPassword(driverId, password) {
   await q('update drivers set pin_hash=$2, has_password=true where id=$1', [driverId, hashSecret(validPassword(password))]);
+}
+
+/* ---------- البقالات: نفس الفكرة ---------- */
+const STORE_MSG = {
+  pending: 'طلب بقالتك تحت المراجعة. فريق جارك بيتواصل معك ويفعّل الحساب، وعادة خلال يوم.',
+  rejected: 'ما قدرنا نقبل طلب البقالة هالمرة. تواصل مع إدارة جارك لو عندك سؤال.'
+};
+export function accountOk(role, r) {
+  if (role === 'driver') return checkDriverOk(r);
+  if (role === 'store') {
+    if (r.status && r.status !== 'active') { const e = new HttpError(403, (STORE_MSG[r.status] || 'الحساب غير مفعّل') + (r.status === 'rejected' && r.review_note ? ' (السبب: ' + r.review_note + ')' : '')); e.code = 'store_' + r.status; throw e; }
+    if (r.suspended) throw new HttpError(403, 'الحساب موقوف، تواصل مع إدارة جارك');
+  }
+}
+export async function storeApply(b, ip) {
+  limit('sapply:' + ip, 5, 60 * 60e3);
+  const phone = normPhone(b.phone), name = String(b.name || '').trim().slice(0, 60), owner = String(b.owner_name || '').trim().slice(0, 60);
+  if (name.length < 2) throw bad('اكتب اسم البقالة');
+  if (owner.length < 3) throw bad('اكتب اسمك الكامل');
+  if (!validSaudiMobile(phone)) throw bad('اكتب رقم جوال سعودي صحيح يبدأ بـ 05');
+  const pass = validPassword(b.password);
+  const lat = Number(b.lat), lng = Number(b.lng);
+  if (!(lat > 16 && lat < 33 && lng > 34 && lng < 56)) throw bad('حدد مكان البقالة على الخريطة');
+  const old = await one('select id, status from stores where owner_phone=$1', [phone]);
+  if (old && old.status !== 'rejected') throw bad(old.status === 'pending' ? 'عندك طلب تحت المراجعة بهالرقم. سجّل دخول عشان تشوف حالته' : 'الرقم هذا مسجّل لبقالة. سجّل دخول بكلمة السر');
+  const vals = [name, phone, hashSecret(pass), lat, lng, String(b.area || '').trim().slice(0, 120) || null, owner, String(b.cr_number || '').replace(/\D/g, '').slice(0, 12) || null, !!b.self_delivery];
+  return old
+    ? one(`update stores set name=$1, pin_hash=$3, has_password=true, lat=$4, lng=$5, area=$6, owner_name=$7, cr_number=$8, self_delivery=$9, status='pending', suspended=true, review_note=null where owner_phone=$2 returning id, name`, vals)
+    : one(`insert into stores (name, owner_phone, pin_hash, has_password, lat, lng, area, owner_name, cr_number, self_delivery, status, suspended) values ($1,$2,$3,true,$4,$5,$6,$7,$8,$9,'pending',true) returning id, name`, vals);
+}
+export async function passwordLogin(role, rawPhone, password, ip) {
+  const phone = normPhone(rawPhone);
+  if (!validSaudiMobile(phone)) throw bad('اكتب رقم جوالك صح، يبدأ بـ 05');
+  limit('pw:' + role + ':' + ip + ':' + phone, 8, 15 * 60e3);
+  const [t, col] = ROLE_TABLE[role];
+  const r = await one(`select * from ${t} where ${col}=$1`, [phone]);
+  if (!r || !r.has_password || !checkSecret(String(password || ''), r.pin_hash)) throw new HttpError(401, 'الجوال أو كلمة السر غلط');
+  accountOk(role, r);
+  return newSession(role, r.id, 90);
+}
+export async function setPassword(role, id, password) {
+  await q(`update ${ROLE_TABLE[role][0]} set pin_hash=$2, has_password=true where id=$1`, [id, hashSecret(validPassword(password))]);
 }

@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { initDb, q, one, dbKind } from './db.js';
 import { sse, emit } from './events.js';
 import { cfg, setCfg, DEFAULTS, TEXT_DEFAULTS } from './config.js';
-import { startOtp, verifyOtp, adminLogin, requireRole, driverApply, driverPasswordLogin, setDriverPassword } from './auth.js';
+import { startOtp, verifyOtp, adminLogin, requireRole, driverApply, driverPasswordLogin, setDriverPassword, storeApply, passwordLogin, setPassword } from './auth.js';
+import { limit } from './util.js';
 import { listing, quote, inZone, zoneOf } from './catalog.js';
 import { respondOffer, respondDriver, sweep, clearTimers } from './dispatch.js';
 import * as O from './orders.js';
@@ -30,6 +31,28 @@ const num = (v) => { const n = Number(String(v ?? '').replace(/[٠-٩]/g, d => '
 const dataUrl = (s) => { const m = /^data:([\w/+.-]+)(?:;[^,]*)?;base64,(.+)$/.exec(s || ''); return m ? { mime: m[1], b64: m[2] } : null; };
 const baseUrl = (req) => process.env.PUBLIC_URL || (req.protocol + '://' + req.get('host'));
 
+// رابط قوقل ماب (حتى المختصر maps.app.goo.gl): نفتحه من السيرفر ونطلع الإحداثيات منه
+async function mapLink(raw) {
+  const u = String(raw || '').trim();
+  if (!/^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+)/.test(u)) throw bad('الصق رابط من قوقل ماب');
+  let text = u;
+  try {
+    const r = await fetch(u, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0', 'Accept-Language': 'ar' }, signal: AbortSignal.timeout(8000) });
+    text = r.url + ' ' + (await r.text()).slice(0, 200000);
+  } catch { /* نحاول من الرابط نفسه */ }
+  const m = text.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || text.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || text.match(/[?&](?:q|query|ll|center)=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/) || text.match(/\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/);
+  if (!m) throw bad('ما قدرنا نقرأ الموقع من الرابط. حدده على الخريطة');
+  return { lat: Number(m[1]), lng: Number(m[2]) };
+}
+async function addStarterPrices(storeId) {
+  const prods = (await q('select id, name_ar, size from products where active')).map(p => ({ id: p.id, price: basePrice(p.name_ar, p.size) })).filter(p => p.price);
+  // دفعة وحدة بدل استعلام لكل منتج (أسرع بكثير لما القاعدة بعيدة)
+  for (let i = 0; i < prods.length; i += 200) {
+    const part = prods.slice(i, i + 200), vals = part.map((_, k) => `($1,$${k * 2 + 2},$${k * 2 + 3},true,0.6)`).join(',');
+    await q(`insert into store_products (store_id, product_id, price, available, confidence) values ${vals} on conflict do nothing`, [storeId, ...part.flatMap(p => [p.id, p.price])]);
+  }
+}
+
 export async function createApp() {
   await initDb();
   if (process.env.DEMO === '1') await seedDemo(); else await seedCatalog();
@@ -48,6 +71,23 @@ export async function createApp() {
   app.post('/api/auth/verify', wrap(async (req, res) => { const r = await verifyOtp(req.body.phone, req.body.code); res.json({ token: r.token, customer: r.customer, isNew: r.isNew }); }));
   // البقالة والمندوب يدخلون برمز يوصلهم SMS على الجوال المسجّل في الإدارة
   app.post('/api/store/otp', wrap(async (req, res) => res.json(await startOtp(req.body.phone, req.ip, 'store'))));
+  app.post('/api/store/apply', wrap(async (req, res) => {
+    const s = await storeApply(req.body || {}, req.ip);
+    await addStarterPrices(s.id);
+    emit('admin', { type: 'store_apply', name: s.name });
+    pushTo('admin', null, { title: 'بقالة جديدة تبي تنضم', body: s.name + ' سجّلت وتنتظر موافقتك', url: '/admin/#stores', tag: 'sapply' }).catch(() => {});
+    res.json({ ok: true, status: 'pending' });
+  }));
+  app.post('/api/store/login', wrap(async (req, res) => res.json({ token: await passwordLogin('store', req.body.phone, req.body.password, req.ip) })));
+  // البحث في الخريطة (للتسجيل وللإدارة)، بحد معقول لكل جهاز
+  app.get('/api/geo', wrap(async (req, res) => { limit('geo:' + req.ip, 120, 60 * 60e3); res.json({ results: await geoSearch(req.query.q) }); }));
+  app.get('/api/geo/rev', wrap(async (req, res) => {
+    limit('geo:' + req.ip, 120, 60 * 60e3);
+    const lat = Number(req.query.lat), lng = Number(req.query.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw bad('موقع غير صحيح');
+    res.json(await geoReverse(lat, lng));
+  }));
+  app.get('/api/geo/maplink', wrap(async (req, res) => { limit('geo:' + req.ip, 120, 60 * 60e3); res.json(await mapLink(req.query.u)); }));
   app.post('/api/store/verify', wrap(async (req, res) => res.json({ token: (await verifyOtp(req.body.phone, req.body.code, 'store')).token })));
   app.post('/api/driver/otp', wrap(async (req, res) => res.json(await startOtp(req.body.phone, req.ip, 'driver'))));
   app.post('/api/driver/apply', wrap(async (req, res) => {
@@ -188,6 +228,7 @@ export async function createApp() {
   st.get('/tabs', wrap(async (req, res) => res.json({ tabs: await H.storeTabs(req.store.id) })));
   st.post('/tabs/:id', wrap(async (req, res) => res.json({ tab: await H.storeTabAction(req.store.id, req.params.id, req.body) })));
   st.post('/push', wrap(async (req, res) => res.json(await subscribe('store', req.store.id, req.body))));
+  st.post('/password', wrap(async (req, res) => { await setPassword('store', req.store.id, req.body.password); res.json({ ok: true }); }));
   st.get('/me', wrap(async (req, res) => {
     const s = req.store; const { pin_hash, ...pub } = s;
     const today = await one(`select count(*)::int n, coalesce(sum(subtotal),0)::float sales from order_parts where store_id=$1 and status <> 'cancelled' and created_at::date = now()::date`, [s.id]);
@@ -318,26 +359,7 @@ export async function createApp() {
   ad.get('/orders', wrap(async (req, res) => res.json({ orders: await q(`select o.id, o.number, o.status, o.quote_total, o.final_total, o.refunded_amount, o.created_at, o.delivered_at, o.dispatch_round, c.phone, d.name as driver_name,
      (select string_agg(s.name, '، ') from order_parts p join stores s on s.id=p.store_id where p.order_id=o.id and p.status <> 'cancelled') as stores
      from orders o join customers c on c.id=o.customer_id left join drivers d on d.id=o.driver_id ${req.query.status ? 'where o.status=$1' : ''} order by o.created_at desc limit 200`, req.query.status ? [req.query.status] : []) })));
-  ad.get('/stores', wrap(async (_req, res) => res.json({ stores: await q(`select s.id, s.name, s.owner_phone, s.area, s.lat, s.lng, s.is_open, s.self_delivery, s.suspended, s.commission_pct, s.offers_n, s.accepted_n, s.respond_n, s.respond_ms_sum, s.rating_sum, s.rating_n, (select count(*)::int from store_products sp where sp.store_id=s.id and sp.available) as products from stores s order by s.created_at`) })));
-  ad.get('/geo', wrap(async (req, res) => res.json({ results: await geoSearch(req.query.q) })));
-  ad.get('/geo/rev', wrap(async (req, res) => {
-    const lat = Number(req.query.lat), lng = Number(req.query.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw bad('موقع غير صحيح');
-    res.json(await geoReverse(lat, lng));
-  }));
-  // رابط قوقل ماب مختصر (maps.app.goo.gl): نفتحه من السيرفر ونطلع الإحداثيات منه
-  ad.get('/maplink', wrap(async (req, res) => {
-    const u = String(req.query.u || '').trim();
-    if (!/^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+)/.test(u)) throw bad('الصق رابط من قوقل ماب');
-    let text = u;
-    try {
-      const r = await fetch(u, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0', 'Accept-Language': 'ar' }, signal: AbortSignal.timeout(8000) });
-      text = r.url + ' ' + (await r.text()).slice(0, 200000);
-    } catch { /* نحاول من الرابط نفسه */ }
-    const m = text.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || text.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || text.match(/[?&](?:q|query|ll|center)=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/) || text.match(/\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/);
-    if (!m) throw bad('ما قدرنا نقرأ الموقع من الرابط. حدده على الخريطة');
-    res.json({ lat: Number(m[1]), lng: Number(m[2]) });
-  }));
+  ad.get('/stores', wrap(async (_req, res) => res.json({ stores: await q(`select s.id, s.name, s.owner_phone, s.area, s.lat, s.lng, s.is_open, s.self_delivery, s.suspended, s.status, s.owner_name, s.cr_number, s.has_password, s.review_note, s.created_at, s.commission_pct, s.offers_n, s.accepted_n, s.respond_n, s.respond_ms_sum, s.rating_sum, s.rating_n, (select count(*)::int from store_products sp where sp.store_id=s.id and sp.available) as products from stores s order by (s.status='pending') desc, s.created_at`) })));
   ad.post('/stores', wrap(async (req, res) => {
     const b = req.body, phone = normPhone(b.owner_phone), lat = num(b.lat), lng = num(b.lng);
     if (!b.name || !validSaudiMobile(phone)) throw bad('اسم البقالة وجوال صاحبها مطلوبين');
@@ -345,20 +367,31 @@ export async function createApp() {
     if (!inZone(await cfg(), lat, lng, 100)) throw bad('البقالة برا حدود الحي اللي نخدمه. وسّع الحي من صفحة «الحي» أو اختر بقالة داخله');
     const dup = await one('select name from stores where owner_phone=$1', [phone]);
     if (dup) throw bad(`الرقم هذا مسجّل لبقالة «${dup.name}». تأكد من الرقم، أو شوف البقالة في الجدول فوق`);
-    const s = await one('insert into stores (name, owner_phone, pin_hash, lat, lng, area, self_delivery) values ($1,$2,$3,$4,$5,$6,$7) returning id, name', [b.name, phone, hashSecret(crypto.randomBytes(16).toString('hex')), lat, lng, b.area || null, !!b.self_delivery]);
-    if (b.starter_prices) {
-      const prods = (await q('select id, name_ar, size from products where active')).map(p => ({ id: p.id, price: basePrice(p.name_ar, p.size) })).filter(p => p.price);
-      // دفعة وحدة بدل استعلام لكل منتج (أسرع بكثير لما القاعدة بعيدة)
-      for (let i = 0; i < prods.length; i += 200) {
-        const part = prods.slice(i, i + 200), vals = part.map((_, k) => `($1,$${k * 2 + 2},$${k * 2 + 3},true,0.6)`).join(',');
-        await q(`insert into store_products (store_id, product_id, price, available, confidence) values ${vals} on conflict do nothing`, [s.id, ...part.flatMap(p => [p.id, p.price])]);
-      }
-    }
+    const pw = String(b.password || '').trim();
+    if (pw && pw.length < 6) throw bad('كلمة السر لازم 6 على الأقل، أو اتركها فاضية');
+    const s = await one('insert into stores (name, owner_phone, pin_hash, has_password, lat, lng, area, self_delivery) values ($1,$2,$3,$4,$5,$6,$7,$8) returning id, name', [b.name, phone, hashSecret(pw || crypto.randomBytes(16).toString('hex')), !!pw, lat, lng, b.area || null, !!b.self_delivery]);
+    if (b.starter_prices) await addStarterPrices(s.id);
     sendSms(phone, `هلا! ${b.name} صارت في جارك. ادخل تطبيقك من ${baseUrl(req)}/store/ برقم جوالك هذا، ويوصلك رمز الدخول.`).catch(e => console.error('[sms]', e.message));
     res.json({ store: s });
   }));
   ad.patch('/stores/:id', wrap(async (req, res) => {
     const b = req.body;
+    if (b.status) {
+      if (!['active', 'rejected'].includes(b.status)) throw bad('حالة غير معروفة');
+      const st0 = await one('select * from stores where id=$1', [req.params.id]);
+      if (!st0) throw new HttpError(404, 'البقالة غير موجودة');
+      if (b.status === 'active' && !inZone(await cfg(), st0.lat, st0.lng, 100)) throw bad('البقالة برا حدود الحي. وسّع الحي من صفحة «الحي» أول، وبعدين اقبلها');
+      await q(`update stores set status=$2, suspended=$3, review_note=$4 where id=$1`, [st0.id, b.status, b.status !== 'active', b.note ? String(b.note).slice(0, 140) : null]);
+      const link = baseUrl(req) + '/store/';
+      sendSms(st0.owner_phone, b.status === 'active' ? `مبروك! ${st0.name} صارت في جارك. ادخل من ${link} برقم جوالك وكلمة السر، وراجع أسعارك.` : `${st0.name}: ما قدرنا نقبل طلبكم في جارك هالمرة.` + (b.note ? ' السبب: ' + b.note : '')).catch(e => console.error('[sms]', e.message));
+      return res.json({ ok: true });
+    }
+    if (b.reset_password) {
+      const pass = String(crypto.randomInt(100000, 1000000));
+      await setPassword('store', req.params.id, pass);
+      await q('delete from sessions where role=$1 and subject_id=$2', ['store', req.params.id]);
+      return res.json({ ok: true, password: pass });
+    }
     await q('update stores set suspended=coalesce($2,suspended), commission_pct=$3 where id=$1', [req.params.id, typeof b.suspended === 'boolean' ? b.suspended : null, b.commission_pct === '' || b.commission_pct == null ? null : num(b.commission_pct)]);
     res.json({ ok: true });
   }));

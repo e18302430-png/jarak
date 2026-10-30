@@ -302,3 +302,10 @@ alter table drivers add column if not exists has_password boolean not null defau
 alter table drivers add column if not exists vehicle text;
 alter table drivers add column if not exists home_area text;
 alter table drivers add column if not exists review_note text;
+
+-- البقالة تسجّل بنفسها وتنتظر موافقة الإدارة
+alter table stores add column if not exists status text not null default 'active';
+alter table stores add column if not exists has_password boolean not null default false;
+alter table stores add column if not exists owner_name text;
+alter table stores add column if not exists cr_number text;
+alter table stores add column if not exists review_note text;

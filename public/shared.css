@@ -223,3 +223,21 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .osm-soft{filter:saturate(.55) brightness(1.04) contrast(.92)}
 @keyframes pulse{50%{box-shadow:0 0 0 10px rgba(255,176,32,.18)}}
 .mys .acts:first-child{border-top:0}
+
+/* الدخول بكلمة السر والتسجيل والمراجعة (المندوب والبقالة) */
+.seg{display:grid;grid-template-columns:1fr 1fr;background:#F1F3F7;border-radius:14px;padding:4px;gap:4px}
+.seg button{border:0;background:none;padding:11px 8px;border-radius:11px;font:inherit;font-weight:800;font-size:15px;color:var(--muted);cursor:pointer}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(17,17,17,.08)}
+.pw{position:relative}.pw input{padding-left:70px!important}
+.pw .eye{position:absolute;left:8px;top:50%;transform:translateY(-50%);border:0;background:none;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;padding:6px}
+.linkbtn{border:0;background:none;color:var(--muted);font:inherit;font-size:13.5px;font-weight:700;text-decoration:underline;cursor:pointer;padding:4px;align-self:center}
+.pend{text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.pend .big{width:72px;height:72px;border-radius:50%;background:#FFF4D6;display:grid;place-items:center;font-size:36px}
+.tl{list-style:none;padding:0;margin:4px 0 0;width:100%;text-align:start;display:flex;flex-direction:column;gap:10px}
+.tl li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px}
+.tl li i{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:900;font-size:13px;background:#EEF0F4;color:var(--muted)}
+.tl li.done i{background:#12A150;color:#fff}.tl li.now i{background:#F2A93B;color:#fff;animation:pulse 1.6s infinite}
+.tl li small{display:block;color:var(--muted);font-size:12.5px}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(242,169,59,.2)}}
+.setpw{background:#FFF8E6;border:1px solid #F5DFA6;border-radius:18px;padding:14px;margin-top:12px;display:flex;flex-direction:column;gap:10px}
+.pickmap{height:300px;border-radius:14px;overflow:hidden;background:#EEF1F5}

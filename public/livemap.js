@@ -95,9 +95,9 @@
       var v = input.value.trim(); if (v.length < 2) { list.innerHTML = ''; list.hidden = true; return; }
       var ll = J.parseMapLink(v); if (ll) { list.hidden = true; onPick({ lat: ll.lat, lng: ll.lng, name: '' }); return; }
       if (/^https?:\/\//.test(v)) { list.hidden = false; list.innerHTML = '<div class="ps-it muted">نقرأ الرابط…</div>';
-        J.api('/api/admin/maplink?u=' + encodeURIComponent(v)).then(function(r){ list.hidden = true; onPick({ lat: r.lat, lng: r.lng, name: '' }); }).catch(function(e){ list.innerHTML = '<div class="ps-it muted">' + J.esc(e.message) + '</div>'; }); return; }
+        J.api('/api/geo/maplink?u=' + encodeURIComponent(v)).then(function(r){ list.hidden = true; onPick({ lat: r.lat, lng: r.lng, name: '' }); }).catch(function(e){ list.innerHTML = '<div class="ps-it muted">' + J.esc(e.message) + '</div>'; }); return; }
       var my = ++seq; list.hidden = false; list.innerHTML = '<div class="ps-it muted">نبحث…</div>';
-      J.api('/api/admin/geo?q=' + encodeURIComponent(v)).then(function(r){
+      J.api('/api/geo?q=' + encodeURIComponent(v)).then(function(r){
           if (my !== seq) return; var rows = r.results || [];
           if (!rows.length) { list.innerHTML = '<div class="ps-it muted">ما لقينا «' + J.esc(v) + '». اكتب اسم الحي ومعه المدينة، مثل «النور الدمام»، أو اضغط على الخريطة مباشرة</div>'; return; }
           list.innerHTML = rows.map(function(x, i){ return '<button type="button" class="ps-it" data-i="' + i + '"><b>' + J.esc(x.name) + '</b><small>' + J.esc(x.city || '') + '</small></button>'; }).join('');
@@ -111,7 +111,7 @@
     document.addEventListener('click', function(e){ if (!list.contains(e.target) && e.target !== input) list.hidden = true; });
   };
   /* وش اسم الحي في هالنقطة */
-  J.whereIs = function(lat, lng){ return J.api('/api/admin/geo/rev?lat=' + lat + '&lng=' + lng); };
+  J.whereIs = function(lat, lng){ return J.api('/api/geo/rev?lat=' + lat + '&lng=' + lng); };
   J.parseMapLink = function(v){
     var m = String(v).match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || String(v).match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || String(v).match(/[?&](?:q|query|ll)=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/) || String(v).match(/^\s*(-?\d{1,2}\.\d{3,})\s*[,،]\s*(-?\d{1,3}\.\d{3,})\s*$/);
     return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
