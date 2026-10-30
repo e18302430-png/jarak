@@ -6,6 +6,10 @@ services:
     buildCommand: npm ci --omit=dev
     startCommand: node src/index.js
     healthCheckPath: /health
+    disk:
+      name: jarak-uploads
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
@@ -17,6 +21,8 @@ services:
         generateValue: true
       - key: DEMO
         value: "0"
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
       - key: PUBLIC_URL
         sync: false
       - key: GEMINI_API_KEY
