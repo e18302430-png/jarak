@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#172057">
+<link rel="icon" href="/admin/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="/admin/manifest.webmanifest">
+<title>إدارة جارك</title>
+<link rel="stylesheet" href="/shared.css">
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+<style>
+.wrap{max-width:1200px;margin:0 auto;padding:0 16px 60px}
+.login{min-height:100dvh;display:flex;flex-direction:column;background:var(--bg-2)}
+.login form{width:100%;max-width:400px;margin:auto;padding:20px;display:flex;flex-direction:column;gap:18px;align-items:center}
+.login .panel{width:100%;background:var(--bg);border-radius:var(--r-xl);padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--sh-3)}
+.hdr{padding:calc(14px + env(safe-area-inset-top,0px)) 0 8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hdr .mk{width:42px;height:42px}.hdr .mk svg{width:100%;height:100%}
+.hdr h1{font-size:23px}
+.tabs{margin-bottom:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.kpi{padding:16px;display:flex;flex-direction:column;gap:4px;position:relative}
+.kpi small{color:var(--muted);font-size:13px}
+.kpi b{font-size:28px;line-height:1.2}
+.kpi em{font-style:normal;font-size:12.5px;color:var(--muted)}
+.kpi.red{border-color:color-mix(in srgb,var(--red) 45%,transparent)}.kpi.red b{color:var(--red)}
+.kpi.green b{color:var(--green)}
+.sec{padding:18px;margin-top:14px}
+.sec h2{font-size:19px;margin-bottom:12px}
+.tw{overflow-x:auto}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.chart{width:100%;height:auto;display:block}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:14px;align-items:start}
+@media (max-width:900px){.two{grid-template-columns:1fr}}
+
+/* profit calculator */
+.knob{display:grid;grid-template-columns:1fr 92px;gap:4px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.knob:last-child{border-bottom:0}
+.knob label{font-weight:500;font-size:14.5px}
+.knob small{grid-column:1 / -1;color:var(--muted);font-size:12.5px;margin-top:-2px}
+.knob input[type=number]{min-height:40px;padding:6px 10px;text-align:center}
+.knob input[type=range]{grid-column:1 / -1}
+.grp{font-size:14px;margin:18px 0 4px;color:var(--brand-ink);background:var(--brand-100);display:inline-block;padding:3px 12px;border-radius:8px;font-weight:800}
+.grp:first-child{margin-top:0}
+.verdict{border-radius:var(--r-xl);padding:20px;background:var(--ink);color:#fff;display:flex;flex-direction:column;gap:6px;overflow:hidden;position:relative}
+.verdict small{color:rgba(255,255,255,.75)}
+.verdict .big{font-size:40px;font-weight:700;line-height:1.15}
+.verdict .big.neg{color:#FF9B8F}
+.verdict .big.pos{color:#4ADE80}
+.verdict .row small{display:block}
+.verdict .row b{font-size:20px}
+.verdict .row > div{flex:1;min-width:120px;background:rgba(255,255,255,.07);border-radius:14px;padding:10px 12px}
+.wf{display:flex;flex-direction:column;gap:8px}
+.wf .r{display:grid;grid-template-columns:150px 1fr 82px;gap:10px;align-items:center;font-size:14px}
+.wf .bar{height:22px;border-radius:6px;background:var(--bg-3);position:relative;overflow:hidden}
+.wf .bar i{position:absolute;top:0;bottom:0;border-radius:6px}
+.wf .r.tot{font-weight:700;border-top:1px dashed var(--line);padding-top:8px}
+.side{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.side .card{padding:16px;display:flex;flex-direction:column;gap:6px}
+.side h3{font-size:17px;display:flex;gap:8px;align-items:center}
+.side h3 .i{color:var(--brand)}
+.side p{font-size:14px;color:var(--muted)}
+.side b.n{font-size:21px;color:var(--ink)}
+#zmap{height:460px;border-radius:var(--r-lg);overflow:hidden;background:#EEF1F5;min-width:0}
+#zmap.hood{aspect-ratio:auto;height:auto}
+.live-grid{display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start}
+@media (max-width:900px){.live-grid{grid-template-columns:1fr}}
+.live-map{position:relative;height:620px;padding:0;overflow:hidden}
+.live-map #lvMap{position:absolute;inset:0}
+.lv-legend{position:absolute;z-index:500;top:12px;inset-inline-start:12px;display:flex;gap:10px;flex-wrap:wrap;background:#fff;border-radius:14px;padding:8px 12px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.lv-legend span{display:flex;align-items:center;gap:6px}.lv-legend i{width:12px;height:12px;border-radius:50%;display:inline-block}.lv-legend i.sq{border-radius:4px;border:2px solid #FF3B30;background:#fff}
+.lv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.lv-stats div{background:var(--bg-2);border-radius:16px;padding:12px}.lv-stats small{display:block;color:var(--muted);font-size:12px;font-weight:700}.lv-stats b{font-size:26px;font-weight:900}
+.lv-list{display:flex;flex-direction:column;gap:4px;max-height:470px;overflow:auto}
+.lv-list button{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;text-align:start;background:none;border:0;font:inherit;cursor:pointer}
+.lv-list button:hover{background:var(--bg-2)}
+.lv-list .av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:none}.lv-list .av img{width:26px;transform:scaleX(-1)}
+.lv-list small{display:block;color:var(--muted);font-size:12.5px}
+.ready{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.ready .it{display:flex;gap:10px;align-items:flex-start;padding:12px;border-radius:14px;background:var(--bg-2)}
+.ready .dot{width:12px;height:12px;border-radius:50%;margin-top:5px;flex:none}
+.ready b{font-weight:900}.ready small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.pgrid .ph{border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.pgrid .imgs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pgrid img{width:100%;aspect-ratio:1;object-fit:contain;background:var(--bg-2);border-radius:10px}
+.pgrid small{color:var(--muted)}
+.howto{counter-reset:s;list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.howto li{counter-increment:s;display:grid;grid-template-columns:30px 1fr;gap:10px;font-size:14.5px}
+.howto li::before{content:counter(s);width:30px;height:30px;border-radius:50%;background:var(--brand-50);color:var(--brand);display:grid;place-items:center;font-weight:700}
+</style>
+</head>
+<body>
+<section class="login" id="login" hidden>
+  <form id="loginForm"><span id="lBrand"></span>
+    <div class="panel"><h2 style="font-size:22px">لوحة الإدارة</h2>
+    <label class="field">رمز الإدارة<input type="password" id="tok" class="ltr" required autocomplete="current-password"></label>
+    <div class="err" id="lErr"></div>
+    <button class="btn btn-brand btn-block btn-lg" type="submit">دخول</button></div>
+  </form>
+</section>
+<div class="wrap" id="app" hidden>
+  <div class="hdr"><span class="mk" id="mk"></span><h1>إدارة جارك</h1><span class="pill ok" id="zonePill"></span><span class="sp"></span><span class="pill ok"><span class="dot-live"></span>مباشر</span><button class="btn btn-sm" id="logout" type="button">خروج</button></div>
+  <nav class="tabs">
+    <a href="#kpis" data-v="kpis"><span data-icon="chart"></span>المؤشرات</a>
+    <a href="#live" data-v="live"><span data-icon="pin"></span>الخريطة الحية</a>
+    <a href="#profit" data-v="profit"><span data-icon="cash"></span>حاسبة الأرباح</a>
+    <a href="#zone" data-v="zone"><span data-icon="map"></span>الحي</a>
+    <a href="#orders" data-v="orders"><span data-icon="receipt"></span>الطلبات</a>
+    <a href="#stores" data-v="stores"><span data-icon="store"></span>البقالات</a>
+    <a href="#drivers" data-v="drivers"><span data-icon="bike"></span>المناديب</a>
+    <a href="#money" data-v="money"><span data-icon="wallet"></span>التحويلات</a>
+    <a href="#complaints" data-v="complaints"><span data-icon="alert"></span>الشكاوى</a>
+    <a href="#config" data-v="config"><span data-icon="gear"></span>الإعدادات</a>
+  </nav>
+
+  <section data-view="live" hidden>
+    <div class="live-grid">
+      <div class="card live-map"><div id="lvMap"></div><div class="lv-legend"><span><i style="background:var(--brand)"></i>متصل وفاضي</span><span><i style="background:#FFB020"></i>في مشوار</span><span><i style="background:#D4D4D4"></i>غير متصل</span><span><i class="sq"></i>طلب ينتظر</span></div></div>
+      <div class="stack" style="gap:12px"><div class="lv-stats" id="lvStats"></div><div class="card sec" style="margin:0"><h2>المناديب الحين</h2><div id="lvList" class="lv-list"></div></div></div>
+    </div>
+  </section>
+
+  <section data-view="kpis">
+    <div class="kpis" id="kpis"></div>
+    <div class="card sec"><h2>الطلبات المسلّمة باليوم، آخر 30 يوم</h2><div id="chart"></div></div>
+    <div class="card sec"><h2>فلوس آخر 30 يوم</h2><div class="tw"><table id="moneyT"></table></div></div>
+  </section>
+
+  <section data-view="profit" hidden>
+    <div class="two">
+      <div class="card sec" style="margin-top:0" id="knobs"></div>
+      <div class="stack" id="pOut"></div>
+    </div>
+  </section>
+
+  <section data-view="zone" hidden>
+    <div class="two">
+      <div class="stack">
+        <div class="card sec stack" style="margin-top:0">
+          <h2 style="margin:0">الحي اللي نخدمه</h2>
+          <p class="muted" style="font-size:14px">نبدأ بحي واحد ونغطيه صح: كل البقالات فيه معنا، والمندوب ما يطلع منه. أي عميل برا الحي يدخل قائمة الانتظار، وتشوف هنا وين الطلب عليك عشان تعرف وين تتوسع بعده.</p>
+          <label class="field">اسم الحي<input type="text" id="zName"></label>
+          <label class="field">نصف قطر الحي: <b id="zRv" class="num"></b><input type="range" id="zR" min="500" max="5000" step="100"></label>
+          <div class="form" style="grid-template-columns:1fr 1fr"><label class="field">خط العرض<input type="text" id="zLat" class="ltr"></label><label class="field">خط الطول<input type="text" id="zLng" class="ltr"></label></div>
+          <small class="muted" id="zHint">اضغط على الخريطة عشان تحدد وسط الحي.</small>
+          <button class="btn btn-primary" id="zSave" type="button">احفظ الحي</button>
+        </div>
+        <div class="card sec" style="margin-top:0"><h2>قائمة الانتظار: <span id="wN" class="num">0</span></h2><div class="tw"><table id="waitT"></table></div></div>
+      </div>
+      <div id="zmap"></div>
+    </div>
+  </section>
+
+  <section data-view="orders" hidden><div class="card tw" style="margin-top:0;overflow:hidden"><table id="ordersT"></table></div></section>
+  <section data-view="stores" hidden>
+    <div class="card sec" id="photosBox" hidden style="margin-top:0;margin-bottom:14px"><h2>صور من البقالات تنتظر موافقتك</h2><div class="pgrid" id="photosG"></div></div>
+    <div class="card tw" style="margin-top:0;overflow:hidden"><table id="storesT"></table></div>
+    <form class="card sec" id="storeForm"><h2>إضافة بقالة</h2><div class="form">
+      <label class="field">اسم البقالة<input type="text" name="name" required></label>
+      <label class="field">جوال المالك<input type="tel" name="owner_phone" class="ltr" required></label>
+      
+      <label class="field">وصف المكان<input type="text" name="area" placeholder="الشارع أو أقرب معلم"></label>
+      <label class="field">خط العرض<input type="text" name="lat" class="ltr" required placeholder="26.2852"></label>
+      <label class="field">خط الطول<input type="text" name="lng" class="ltr" required placeholder="50.2098"></label>
+    </div>
+    <label class="row" style="margin-top:12px"><input type="checkbox" name="starter_prices" checked> عبّي أسعار مبدئية للمنتجات المعروفة (البقالة تعدّلها بعدين)</label>
+    <label class="row" style="margin-top:6px"><input type="checkbox" name="self_delivery"> البقالة توصّل بنفسها</label>
+    <button class="btn btn-primary" type="submit" style="margin-top:12px">أضف البقالة</button><p class="muted" style="font-size:13px;margin-top:8px">نرسل لصاحب البقالة رسالة فيها رابط تطبيقه، ويدخل برقمه برمز يوصله SMS.</p></form>
+  </section>
+  <section data-view="drivers" hidden>
+    <div class="card tw" style="margin-top:0;overflow:hidden"><table id="driversT"></table></div>
+    <form class="card sec" id="driverForm"><h2>إضافة مندوب</h2><div class="form">
+      <label class="field">الاسم<input type="text" name="name" required></label>
+      <label class="field">الجوال<input type="tel" name="phone" class="ltr" required></label>
+      
+      <label class="field">الشركة<input type="text" name="company" value="بوارق الشرق"></label>
+    </div><button class="btn btn-primary" type="submit" style="margin-top:12px">أضف المندوب</button><p class="muted" style="font-size:13px;margin-top:8px">نرسل للمندوب رسالة فيها رابط تطبيقه، ويدخل برقمه برمز يوصله SMS.</p></form>
+  </section>
+  <section data-view="money" hidden>
+    <div class="row"><button class="btn btn-primary" id="runSettle" type="button">احسب التحويلات المستحقة</button><span class="muted">تجمع كل المستحق للبقالات والمناديب اللي ما تحوّل.</span></div>
+    <div class="card tw" style="margin-top:14px;overflow:hidden"><table id="settleT"></table></div>
+  </section>
+  <section data-view="complaints" hidden><div class="card tw" style="margin-top:0;overflow:hidden"><table id="compT"></table></div></section>
+  <section data-view="config" hidden>
+    <div class="card sec" style="margin-top:0;margin-bottom:14px"><h2>إشعار لكل العملاء</h2><p class="muted" style="font-size:14px" id="pushStats">—</p><div class="form" style="margin-top:10px"><label class="field">العنوان<input type="text" id="bcT" maxlength="60" placeholder="مثلاً: التوصيل مجاني الليلة"></label><label class="field">الرسالة<input type="text" id="bcB" maxlength="180" placeholder="اطلب قبل 12 والتوصيل علينا"></label></div><button class="btn btn-primary" id="bcGo" type="button" style="margin-top:10px">أرسل الإشعار</button></div>
+    <div class="card sec" style="margin-top:0;margin-bottom:14px"><h2>جاهزية الإطلاق</h2><p class="muted" style="font-size:14px;margin-bottom:10px">كل شي أخضر يعني شغّال حقيقي. الأحمر لازم يتجهّز قبل ما تفتح للعملاء.</p><div class="ready" id="readyL"></div></div>
+    <div class="two">
+      <form class="card sec" id="cfgForm" style="margin-top:0"><h2>إعدادات التشغيل</h2><div class="form" id="cfgFields"></div><button class="btn btn-primary" type="submit" style="margin-top:14px">احفظ الإعدادات</button></form>
+      <div class="card sec stack" style="margin-top:0">
+        <h2 style="margin:0">الذكاء الاصطناعي</h2>
+        <p class="muted" style="font-size:14px">التطبيق يفهم قوائم المقاضي اللي يلصقها العميل <b>بدون أي مفتاح</b>. المفتاح يضيف: فهم أدق للهجة، وتصوير ورقة المقاضي، والتسجيلات الصوتية.</p>
+        <div class="row"><span class="pill" id="aiState">—</span></div>
+        <label class="field">مفتاح Gemini<input type="password" id="aiKey" class="ltr" placeholder="AIza..." autocomplete="off"></label>
+        <div class="row"><button class="btn btn-primary" id="aiSave" type="button">احفظ المفتاح</button><button class="btn" id="aiTest" type="button">جرّب الفهم</button><button class="btn btn-ghost btn-sm" id="aiDel" type="button">احذف المفتاح</button></div>
+        <div id="aiOut"></div>
+        <h3 style="font-size:16px;margin-top:6px">كيف تجيب المفتاح (مجاني، دقيقتين)</h3>
+        <ol class="howto">
+          <li><span>افتح <b class="ltr">aistudio.google.com/apikey</b> وادخل بحساب جيميل.</span></li>
+          <li><span>اضغط <b class="ltr">Create API key</b> وانسخ المفتاح (يبدأ بـ AIza).</span></li>
+          <li><span>الصقه هنا واضغط «احفظ المفتاح»، وبعدها «جرّب الفهم».</span></li>
+        </ol>
+      </div>
+      <div class="card sec stack" style="margin-top:0">
+        <h2 style="margin:0">الخريطة</h2>
+        <p class="muted" style="font-size:14px">التطبيقات الثلاثة تستخدم خرايط OpenStreetMap المجانية. تكفي للتجربة وأول الإطلاق، بس لو كثرت الطلبات خذ مفتاح مجاني من MapTiler (100 ألف تحميل بالشهر) والصق الرابط هنا.</p>
+        <label class="field">رابط الخريطة<input type="url" id="mapTiles" class="ltr" placeholder="https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=..."></label>
+        <div class="row"><button class="btn btn-primary" id="mapSave" type="button">احفظ</button><button class="btn btn-ghost btn-sm" id="mapReset" type="button">رجّع المجانية</button></div>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script src="/shared.js"></script>
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script src="/livemap.js"></script>
+<script>
+(function(){
+'use strict';
+var $ = J.$, $$ = J.$$, esc = J.esc, I = J.icon;
+J.tokenKey = 'jarak-admin-token';
+J.onUnauthorized = function(){ J.store.set(J.tokenKey, null); showLogin(); };
+J.ROLE = 'admin'; J.paintIcons(); $('#lBrand').innerHTML = J.brand(); $('#mk').innerHTML = J.MARK;
+function showLogin(){ $('#login').hidden = false; $('#app').hidden = true; }
+$('#loginForm').addEventListener('submit', function(e){ e.preventDefault(); J.api('/api/admin/login', { method: 'POST', body: { token: $('#tok').value } }).then(function(r){ J.store.set(J.tokenKey, r.token); boot(); }).catch(function(err){ $('#lErr').textContent = err.message; }); });
+$('#logout').addEventListener('click', function(){ J.store.set(J.tokenKey, null); showLogin(); });
+var es = null, CFG = null;
+function boot(){ $('#login').hidden = true; $('#app').hidden = false;
+  J.api('/api/admin/config').then(function(r){ CFG = r.config; $('#zonePill').textContent = 'حي ' + CFG.zone_name; route(); });
+  if (es) es.close(); es = J.sse('/api/admin/stream', function(m){ var v = cur(); if (m && m.type === 'driver') { if (v === 'live') liveDriver(m); return; } if (v === 'live') loadLive(); if (v === 'kpis') loadKpis(); if (v === 'orders') loadOrders(); }); }
+var VIEWS = ['live', 'kpis', 'profit', 'zone', 'orders', 'stores', 'drivers', 'money', 'complaints', 'config'];
+function cur(){ var v = location.hash.slice(1) || 'kpis'; return VIEWS.indexOf(v) >= 0 ? v : 'kpis'; }
+function route(){ var v = cur(); $$('[data-view]').forEach(function(s){ s.hidden = s.getAttribute('data-view') !== v; }); $$('.tabs a').forEach(function(a){ if (a.getAttribute('data-v') === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  ({ live: loadLive, kpis: loadKpis, profit: loadProfit, zone: loadZone, orders: loadOrders, stores: loadStores, drivers: loadDrivers, money: loadMoney, complaints: loadComp, config: loadCfg })[v](); }
+window.addEventListener('hashchange', function(){ if (CFG) route(); });
+var pct = function(x){ return x == null ? '—' : Math.round(x * 100) + '%'; };
+var fmt = function(v){ return Math.round(v).toLocaleString('en-US'); };
+
+/* ---------- الخريطة الحية: كل مندوب وحالته وكل طلب مفتوح ---------- */
+var LV = null, LVD = {};
+var ST_O = { searching: 'ندوّر بقالة', preparing: 'يتجهّز', ready: 'جاهز', delivering: 'في الطريق' };
+function dState(d){ return !d.online ? 'off' : d.busy ? 'busy' : ''; }
+function loadLive(){
+  J.api('/api/admin/live').then(function(r){
+    if (!LV) LV = J.livemap($('#lvMap'), { zoom: 15 });
+    var want = {};
+    r.stores.forEach(function(st){ LV.mark('s' + st.id, 'store', st.lat, st.lng, { label: st.name, state: st.is_open ? '' : 'closed' }); want['s' + st.id] = 1; });
+    r.orders.forEach(function(o){ LV.mark('o' + o.id, 'order', o.lat, o.lng, { label: '#' + o.number, state: o.status }); want['o' + o.id] = 1; });
+    LVD = {}; r.drivers.forEach(function(d){ LVD[d.id] = d; LV.mark('d' + d.id, 'driver', d.lat, d.lng, { state: dState(d), label: d.busy ? '#' + d.order_number : '' }); want['d' + d.id] = 1; });
+    Object.keys(LV.marks).forEach(function(k){ if (!want[k]) LV.unmark(k); });
+    if (!LV._fit) { LV._fit = 1; setTimeout(function(){ LV.fit([60, 60]); }, 100); }
+    paintLiveSide(r.orders);
+  });
+}
+function paintLiveSide(orders){
+  var ds = Object.keys(LVD).map(function(k){ return LVD[k]; });
+  if (orders) LV._orders = orders; orders = LV._orders || [];
+  $('#lvStats').innerHTML = [['متصلين', ds.filter(function(d){ return d.online; }).length], ['في مشوار', ds.filter(function(d){ return d.busy; }).length], ['طلبات مفتوحة', orders.length]].map(function(x){ return '<div><small>' + x[0] + '</small><b class="num">' + x[1] + '</b></div>'; }).join('');
+  $('#lvList').innerHTML = ds.sort(function(a, b){ return (b.online - a.online) || (b.busy - a.busy); }).map(function(d){ var st = dState(d);
+    return '<button type="button" data-fly="' + d.id + '"><span class="av" style="background:' + (st === 'off' ? '#E5E5E5' : st === 'busy' ? '#FFB020' : 'var(--brand)') + '"><img src="/img/p/motor_scooter.webp" alt=""></span><span class="sp"><b>' + esc(d.name) + '</b><small>' + (st === 'off' ? 'غير متصل' : d.busy ? 'طلب #' + d.order_number + '، ' + (ST_O[d.order_status] || '') : 'متصل وينتظر طلب') + '</small></span></button>'; }).join('') || '<p class="muted">ما فيه مناديب للحين</p>';
+}
+function liveDriver(m){
+  var d = LVD[m.id]; if (!d || !LV) { loadLive(); return; }
+  if (m.lat != null) { d.lat = m.lat; d.lng = m.lng; } if (m.online != null) d.online = m.online; if (m.busy != null) d.busy = m.busy;
+  LV.mark('d' + d.id, 'driver', d.lat, d.lng, { state: dState(d), label: d.busy ? '#' + d.order_number : '' });
+}
+$('#lvList').addEventListener('click', function(e){ var b = e.target.closest('[data-fly]'); if (!b || !LV) return; var d = LVD[b.getAttribute('data-fly')]; LV.ready.then(function(map){ map.flyTo([d.lat, d.lng], 17, { duration: .8 }); }); });
+
+/* ---------- KPIs: the 8 numbers from the plan ---------- */
+function kpi(label, val, target, state){ return '<div class="card kpi ' + (state || '') + '"><small>' + label + '</small><b class="num">' + val + '</b><em>' + target + '</em></div>'; }
+var OV = null;
+function loadKpis(){
+  J.api('/api/admin/overview').then(function(o){
+    OV = o;
+    var perDay = o.daily.length ? Math.round(o.daily.reduce(function(a, d){ return a + d.n; }, 0) / 30) : 0;
+    $('#kpis').innerHTML = [
+      kpi('طلبات باليوم (متوسط 30 يوم)', perDay, 'الهدف 160', perDay >= 160 ? 'green' : ''),
+      kpi('رد البقالة', o.store_response_s != null ? Math.round(o.store_response_s) + ' ث' : '—', 'الهدف أقل من 60 ث', o.store_response_s > 90 ? 'red' : 'green'),
+      kpi('وقت التوصيل', o.avg_delivery_min != null ? Math.round(o.avg_delivery_min) + ' د' : '—', 'الهدف أقل من 30 د', o.avg_delivery_min > 45 ? 'red' : ''),
+      kpi('طلبات فيها شكوى', pct(o.complaint_rate), 'الهدف أقل من 2%', o.complaint_rate > 0.03 ? 'red' : ''),
+      kpi('رجعوا يطلبون (30 يوم)', pct(o.repeat_rate), 'الهدف أكثر من 40%', o.repeat_rate != null && o.repeat_rate < 0.25 ? 'red' : ''),
+      kpi('متوسط الطلب', o.aov ? J.sar(o.aov) : '—', 'الهدف 70 ر.س', o.aov && o.aov < 50 ? 'red' : ''),
+      kpi('تقييم البقالات', o.store_rating ? o.store_rating.toFixed(1) + ' من 5' : '—', 'الهدف 4.5', o.store_rating && o.store_rating < 4 ? 'red' : ''),
+      kpi('ربح جارك من كل طلب', o.margin_per_order != null ? J.sar(o.margin_per_order) : '—', 'افتح حاسبة الأرباح', o.margin_per_order != null && o.margin_per_order < 0 ? 'red' : 'green'),
+      kpi('طلبات شغّالة الحين', o.live, 'تسلّم اليوم: ' + o.delivered_today, '')
+    ].join('');
+    var max = Math.max.apply(null, o.daily.map(function(d){ return d.n; }).concat([1])), W = 760, H = 180, n = Math.max(o.daily.length, 1), bw = Math.min(46, (W - 40) / n);
+    $('#chart').innerHTML = o.daily.length ? '<svg class="chart" viewBox="0 0 ' + W + ' ' + (H + 34) + '" role="img" aria-label="الطلبات المسلّمة باليوم">' + o.daily.map(function(d, i){ var h = Math.max(3, d.n / max * H), x = W - 20 - (i + 1) * bw; return '<rect x="' + (x + 3) + '" y="' + (H - h + 6) + '" width="' + Math.max(3, bw - 6) + '" height="' + h + '" rx="4" fill="var(--brand)"><title>' + d.day.slice(0, 10) + ': ' + d.n + '</title></rect><text x="' + (x + bw / 2) + '" y="' + (H - h) + '" text-anchor="middle" font-size="12" fill="var(--muted)">' + d.n + '</text><text x="' + (x + bw / 2) + '" y="' + (H + 26) + '" text-anchor="middle" font-size="11" fill="var(--muted)">' + d.day.slice(8, 10) + '/' + d.day.slice(5, 7) + '</text>'; }).join('') + '<line x1="20" x2="' + (W - 20) + '" y1="' + (H + 6) + '" y2="' + (H + 6) + '" stroke="var(--line)"/></svg>' : '<div class="empty">ما فيه طلبات مسلّمة للحين</div>';
+    var m = o.money;
+    $('#moneyT').innerHTML = [['العمولات', m.commission], ['رسوم التوصيل', m.delivery_fee], ['أجور المناديب', -m.driver_pay], ['فرق الأسعار اللي تحمّلناه', m.price_gap], ['الخصومات', m.promo], ['<b>صافي ربح جارك</b>', o.margin_30]].map(function(r){ return '<tr><td>' + r[0] + '</td><td class="num" style="color:' + (r[1] < 0 ? 'var(--red)' : 'inherit') + '">' + J.sar(r[1]) + '</td></tr>'; }).join('');
+  });
+}
+
+/* ---------- profit calculator: كم أربح؟ كم أصرف على التسويق؟ كم آخذ من التاجر؟ ---------- */
+var P = null;
+var KN = [
+  ['g', 'الطلبات'],
+  ['orders', 'طلبات باليوم', 1, 'أول شهر واقعي: 15 لين 40 طلب باليوم في حي واحد', 1, 300],
+  ['aov', 'متوسط قيمة السلة (ر.س)', 1, 'مقاضي البقالة عادة 50 لين 90 ريال', 20, 300],
+  ['g', 'دخلك من كل طلب'],
+  ['comm', 'عمولة البقالة %', 0.5, 'كل 1% زيادة = ريال تقريباً من كل طلب، بس تصعّب إقناع البقالة', 0, 25],
+  ['fee', 'رسوم التوصيل على العميل (ر.س)', 0.5, '', 0, 30],
+  ['free', 'طلبات توصيلها مجاني %', 1, 'اللي فوق حد التوصيل المجاني', 0, 100],
+  ['g', 'تكلفة كل طلب'],
+  ['driver', 'أجرة المندوب (ر.س)', 0.5, 'لو قليلة ما تلقى مناديب، ولو كثيرة تاكل ربحك', 0, 40],
+  ['gw', 'رسوم بوابة الدفع %', 0.1, 'تقديري. تأكد من عرض ميسّر لمدى والبطاقات', 0, 5],
+  ['g', 'التسويق والمصاريف الثابتة (بالشهر)'],
+  ['mkt', 'ميزانية التسويق (ر.س)', 100, 'إعلانات سناب وتيك توك داخل الحي، منشورات، بروشورات للبيوت', 0, 50000],
+  ['cac', 'تكلفة جلب عميل جديد (ر.س)', 1, 'كم تصرف على الإعلان عشان يسجّل عميل واحد ويطلب', 1, 200],
+  ['promo', 'خصم أول طلب (ر.س)', 1, 'مثل كود JARAK10', 0, 50],
+  ['fixed', 'مصاريف ثابتة (ر.س)', 50, 'سيرفر، رسائل التحقق، اشتراكات، جوال، مواصلات', 0, 50000]
+];
+function loadProfit(){
+  if (!P) P = { orders: 40, aov: 70, comm: CFG.commission_pct, fee: CFG.delivery_fee, free: 15, driver: CFG.driver_pay, gw: 2, mkt: 3000, cac: 15, promo: 10, fixed: 1000 };
+  $('#knobs').innerHTML = '<div class="row" style="margin-bottom:6px"><h2 class="sp" style="margin:0">غيّر الأرقام وشوف النتيجة</h2><button class="btn btn-sm" id="pReal" type="button">من أرقامك الحقيقية</button></div>' + KN.map(function(k){
+    if (k[0] === 'g') return '<div class="grp">' + k[1] + '</div>';
+    return '<div class="knob"><label for="k_' + k[0] + '">' + k[1] + '</label><input type="number" id="k_' + k[0] + '" data-k="' + k[0] + '" step="' + k[2] + '" value="' + P[k[0]] + '">' + (k[4] != null ? '<input type="range" data-k="' + k[0] + '" min="' + k[4] + '" max="' + k[5] + '" step="' + k[2] + '" value="' + P[k[0]] + '" aria-label="' + k[1] + '">' : '') + (k[3] ? '<small>' + k[3] + '</small>' : '') + '</div>';
+  }).join('');
+  $('#pReal').onclick = function(){ J.api('/api/admin/overview').then(function(o){ var perDay = o.daily.reduce(function(a, d){ return a + d.n; }, 0) / 30; if (!o.delivered_30) { J.toast('لسه ما فيه طلبات كفاية'); return; } P.orders = Math.max(1, Math.round(perDay)); if (o.aov) P.aov = Math.round(o.aov); loadProfit(); J.toast('حطينا أرقام آخر 30 يوم'); }); };
+  calcProfit();
+}
+$('#knobs').addEventListener('input', function(e){ var k = e.target.getAttribute('data-k'); if (!k) return; P[k] = Number(e.target.value) || 0; $$('[data-k="' + k + '"]').forEach(function(x){ if (x !== e.target) x.value = P[k]; }); calcProfit(); });
+function calcProfit(){
+  var paidFee = P.fee * (1 - P.free / 100);
+  var commR = P.aov * P.comm / 100, gwC = (P.aov + paidFee) * P.gw / 100;
+  var per = commR + paidFee - P.driver - gwC;
+  var mo = P.orders * 30, newC = P.cac ? P.mkt / P.cac : 0, promoC = newC * P.promo;
+  var gross = per * mo, net = gross - P.mkt - promoC - P.fixed;
+  var be = per > 0 ? (P.mkt + promoC + P.fixed) / (per * 30) : Infinity;
+  var acq = P.cac + P.promo, payback = per > 0 ? acq / per : Infinity;
+  var maxV = Math.max(commR + paidFee, 1);
+  var bar = function(v, col){ return '<div class="bar"><i style="inset-inline-start:0;width:' + Math.min(100, Math.abs(v) / maxV * 100) + '%;background:' + col + '"></i></div>'; };
+  var storeSales = P.orders * P.aov * 30;
+  $('#pOut').innerHTML =
+    '<div class="verdict"><small>صافي ربحك بالشهر</small><div class="big num ' + (net >= 0 ? 'pos' : 'neg') + '">' + (net < 0 ? '−' : '') + fmt(Math.abs(net)) + ' ر.س</div>' +
+    '<small>' + (net >= 0 ? 'بعد التسويق والخصومات والمصاريف الثابتة.' : 'خسارة. ارفع الطلبات أو قلّل التسويق، أو راجع الأجرة والعمولة.') + '</small>' +
+    '<div class="row" style="margin-top:10px"><div><small>ربحك من كل طلب</small><b class="num">' + per.toFixed(2) + ' ر.س</b></div><div><small>نقطة التعادل</small><b class="num">' + (isFinite(be) ? Math.ceil(be) + ' طلب/يوم' : 'ما فيه') + '</b></div><div><small>العميل يرجّع تكلفته بعد</small><b class="num">' + (isFinite(payback) ? Math.ceil(payback) + ' طلبات' : '—') + '</b></div></div></div>' +
+    '<div class="card sec" style="margin-top:0"><h2>من وين يجي ربح الطلب الواحد</h2><div class="wf">' +
+      '<div class="r"><span>عمولة البقالة ' + P.comm + '%</span>' + bar(commR, 'var(--green)') + '<b class="num">+' + commR.toFixed(2) + '</b></div>' +
+      '<div class="r"><span>رسوم التوصيل</span>' + bar(paidFee, 'var(--green)') + '<b class="num">+' + paidFee.toFixed(2) + '</b></div>' +
+      '<div class="r"><span>أجرة المندوب</span>' + bar(P.driver, 'var(--red)') + '<b class="num" style="color:var(--red)">−' + P.driver.toFixed(2) + '</b></div>' +
+      '<div class="r"><span>بوابة الدفع</span>' + bar(gwC, 'var(--red)') + '<b class="num" style="color:var(--red)">−' + gwC.toFixed(2) + '</b></div>' +
+      '<div class="r tot"><span>يبقى لك</span>' + bar(per, per >= 0 ? 'var(--brand)' : 'var(--red)') + '<b class="num">' + per.toFixed(2) + '</b></div></div></div>' +
+    '<div class="card sec" style="margin-top:0"><h2>الشهر كامل</h2><table>' +
+      [['الطلبات', fmt(mo) + ' طلب'], ['مبيعات تمر عن طريقك', fmt(mo * P.aov) + ' ر.س'], ['ربح الطلبات', fmt(gross) + ' ر.س'], ['التسويق', '−' + fmt(P.mkt) + ' ر.س'], ['خصم أول طلب لـ ' + fmt(newC) + ' عميل جديد', '−' + fmt(promoC) + ' ر.س'], ['مصاريف ثابتة', '−' + fmt(P.fixed) + ' ر.س'], ['<b>الصافي</b>', '<b>' + (net < 0 ? '−' : '') + fmt(Math.abs(net)) + ' ر.س</b>']].map(function(r){ return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td></tr>'; }).join('') + '</table></div>' +
+    '<div class="side">' +
+      '<div class="card"><h3>' + I('user') + 'العميل</h3><b class="n num">' + (P.aov + P.fee).toFixed(0) + ' ر.س</b><p>يدفع سعر الرف نفسه + ' + P.fee + ' ريال توصيل، ومجاني فوق ' + CFG.free_delivery_over + '. يوفّر مشوار وانتظار، وأي فرق سعر يرجع له.</p></div>' +
+      '<div class="card"><h3>' + I('store') + 'البقالة</h3><b class="n num">+' + fmt(storeSales / Math.max(1, P.stores || 6)) + ' ر.س</b><p>مبيعات زيادة بالشهر لكل بقالة (لو الطلبات توزعت على 6 بقالات). تدفع ' + P.comm + '% بس على اللي انباع، بدون اشتراك.</p></div>' +
+      '<div class="card"><h3>' + I('bike') + 'المندوب</h3><b class="n num">' + fmt(P.driver * 4 * 8) + ' ر.س/يوم</b><p>لو وصّل 4 طلبات بالساعة لمدة 8 ساعات. المسافات قصيرة لأنها داخل حي واحد.</p></div>' +
+      '<div class="card"><h3>' + J.MARKS.customer.replace('<svg', '<svg style="width:22px;height:22px"') + 'جارك</h3><b class="n num" style="color:' + (net >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (net < 0 ? '−' : '') + fmt(Math.abs(net)) + ' ر.س</b><p>صافيك بالشهر بعد كل شي.</p></div>' +
+    '</div>';
+}
+
+/* ---------- zone ---------- */
+var map = null, circle = null, layers = [], Z = null;
+function loadZone(){
+  J.api('/api/admin/zone').then(function(r){
+    Z = r.zone; $('#zName').value = Z.name; $('#zR').value = Z.radius_m; $('#zRv').textContent = J.dist(Z.radius_m); $('#zLat').value = Z.lat; $('#zLng').value = Z.lng;
+    $('#wN').textContent = r.waitlist.length;
+    $('#waitT').innerHTML = r.waitlist.length ? '<tr><th>الجوال</th><th>العنوان</th><th>يبعد</th><th>متى</th></tr>' + r.waitlist.slice(0, 100).map(function(w){ return '<tr><td class="ltr">' + esc(String(w.phone).replace(/^966/, '0')) + '</td><td>' + esc(w.details || '—') + '</td><td class="num">' + J.dist(distM(Z.lat, Z.lng, w.lat, w.lng)) + '</td><td>' + J.ago(w.created_at) + '</td></tr>'; }).join('') : '<tr><td class="muted">ما أحد سجّل من برا الحي للحين</td></tr>';
+    drawMap(r);
+  });
+}
+function distM(a, b, c, d){ var R = 6371000, x = (d - b) * Math.PI / 180 * Math.cos((a + c) / 2 * Math.PI / 180), y = (c - a) * Math.PI / 180; return Math.sqrt(x * x + y * y) * R; }
+function drawMap(r, tries){
+  var el = $('#zmap');
+  if (!window.L && (tries || 0) < 12) { setTimeout(function(){ drawMap(r, (tries || 0) + 1); }, 300); return; }
+  if (!window.L) { J.hood(el, { zone: Z, stores: r.stores.filter(function(s){ return s.in_zone; }).map(function(s){ return { lat: s.lat, lng: s.lng, open: s.is_open }; }) }, { caption: 'حي ' + esc(Z.name) }); $('#zHint').textContent = 'الخريطة التفصيلية تحتاج نت. تقدر تكتب الإحداثيات يدوي.'; return; }
+  if (!map) {
+    el.innerHTML = ''; el.classList.remove('hood');
+    map = L.map(el).setView([Z.lat, Z.lng], 14);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+    map.on('click', function(e){ $('#zLat').value = e.latlng.lat.toFixed(6); $('#zLng').value = e.latlng.lng.toFixed(6); syncCircle(); });
+  }
+  layers.forEach(function(l){ map.removeLayer(l); }); layers = [];
+  circle = L.circle([Z.lat, Z.lng], { radius: Z.radius_m, color: '#C8372D', weight: 2, dashArray: '6 6', fillColor: '#EB3B2F', fillOpacity: .08 }).addTo(map); layers.push(circle);
+  r.stores.forEach(function(s){ layers.push(L.circleMarker([s.lat, s.lng], { radius: 8, color: '#ffffff', weight: 2, fillColor: s.in_zone ? '#F2A93B' : '#9AA0BC', fillOpacity: 1 }).bindTooltip(s.name).addTo(map)); });
+  r.waitlist.forEach(function(w){ layers.push(L.circleMarker([w.lat, w.lng], { radius: 5, color: '#C8372D', weight: 1, fillColor: '#C8372D', fillOpacity: .6 }).bindTooltip('ينتظر: ' + (w.details || '')).addTo(map)); });
+  map.fitBounds(circle.getBounds(), { padding: [20, 20] });
+}
+function syncCircle(){ var lat = Number($('#zLat').value), lng = Number($('#zLng').value), rad = Number($('#zR').value); $('#zRv').textContent = J.dist(rad); if (circle && isFinite(lat) && isFinite(lng)) { circle.setLatLng([lat, lng]); circle.setRadius(rad); } }
+$('#zR').addEventListener('input', syncCircle); $('#zLat').addEventListener('change', syncCircle); $('#zLng').addEventListener('change', syncCircle);
+$('#zSave').addEventListener('click', function(){ J.api('/api/admin/config', { method: 'PATCH', body: { zone_name: $('#zName').value, zone_lat: $('#zLat').value, zone_lng: $('#zLng').value, zone_radius_m: $('#zR').value } }).then(function(r){ CFG = r.config; $('#zonePill').textContent = 'حي ' + CFG.zone_name; J.toast('حفظنا الحي'); loadZone(); }).catch(function(err){ J.toast(err.message); }); });
+
+/* ---------- lists ---------- */
+var ST = { pending_payment: 'ينتظر الدفع', searching: 'نبحث عن بقالة', preparing: 'يتجهّز', ready: 'جاهز', delivering: 'في الطريق', delivered: 'وصل', cancelled: 'ملغي' };
+function loadOrders(){ J.api('/api/admin/orders').then(function(r){ $('#ordersT').innerHTML = '<tr><th>#</th><th>الحالة</th><th>البقالات</th><th>المندوب</th><th>دفع</th><th>رجع</th><th>الجولة</th><th>الوقت</th></tr>' + (r.orders.map(function(o){ return '<tr><td><b>' + o.number + '</b></td><td><span class="pill ' + (o.status === 'delivered' ? 'ok' : o.status === 'cancelled' ? 'bad' : 'warn') + '">' + (ST[o.status] || o.status) + '</span></td><td>' + esc(o.stores || '—') + '</td><td>' + esc(o.driver_name || '—') + '</td><td class="num">' + J.sar(o.quote_total) + '</td><td class="num">' + (Number(o.refunded_amount) ? J.sar(o.refunded_amount) : '—') + '</td><td class="num">' + o.dispatch_round + '</td><td>' + J.ago(o.created_at) + '</td></tr>'; }).join('') || '<tr><td colspan="8" class="muted">ما فيه طلبات للحين</td></tr>'); }); }
+function loadPhotos(){ J.api('/api/admin/photos').then(function(r){ $('#photosBox').hidden = !r.photos.length; $('#photosG').innerHTML = r.photos.map(function(p){ return '<div class="ph" data-ph="' + p.id + '"><div class="imgs"><img src="' + esc(p.current || '') + '" alt="الحالية"><img src="' + esc(p.path) + '" alt="الجديدة"></div><b>' + esc(p.name_ar) + ' <small>' + esc(p.size || '') + '</small></b><small>من ' + esc(p.store_name || '') + '، الجديدة على اليسار</small><div class="row"><button class="btn btn-sm btn-primary" data-ok="1">اعتمدها</button><button class="btn btn-sm" data-ok="0">ارفض</button></div></div>'; }).join(''); }); }
+$('#photosG').addEventListener('click', function(e){ var b = e.target.closest('[data-ok]'); if (!b) return; var ok = b.getAttribute('data-ok') === '1'; J.api('/api/admin/photos/' + b.closest('[data-ph]').getAttribute('data-ph'), { method: 'POST', body: { approve: ok } }).then(function(){ J.toast(ok ? 'اعتمدنا الصورة للعملاء' : 'رفضنا الصورة'); loadPhotos(); }); });
+function loadStores(){ loadPhotos(); J.api('/api/admin/stores').then(function(r){ $('#storesT').innerHTML = '<tr><th>البقالة</th><th>المنتجات</th><th>قبول</th><th>رد</th><th>تقييم</th><th>عمولة خاصة %</th><th></th></tr>' + r.stores.map(function(s){ return '<tr data-id="' + s.id + '"><td><b>' + esc(s.name) + '</b><br><small class="muted"><span class="ltr">' + esc(String(s.owner_phone).replace(/^966/, '0')) + '</span>' + (s.area ? '، ' + esc(s.area) : '') + '</small></td><td class="num">' + s.products + '</td><td class="num">' + (s.offers_n ? Math.round(s.accepted_n / s.offers_n * 100) + '%' : '—') + '</td><td class="num">' + (s.respond_n ? Math.round(s.respond_ms_sum / s.respond_n / 1000) + ' ث' : '—') + '</td><td class="num">' + (s.rating_n ? (s.rating_sum / s.rating_n).toFixed(1) : '—') + '</td><td><input class="in num" style="width:90px;min-height:38px;padding:4px 8px" data-comm value="' + (s.commission_pct != null ? s.commission_pct : '') + '" placeholder="' + CFG.commission_pct + '"></td><td><button class="btn btn-sm ' + (s.suspended ? '' : 'btn-danger') + '" data-susp="' + (!s.suspended) + '">' + (s.suspended ? 'شغّلها' : 'أوقفها') + '</button></td></tr>'; }).join(''); }); }
+$('#storesT').addEventListener('change', function(e){ if (!e.target.hasAttribute('data-comm')) return; var id = e.target.closest('tr').getAttribute('data-id'); J.api('/api/admin/stores/' + id, { method: 'PATCH', body: { commission_pct: e.target.value } }).then(function(){ J.toast('حفظنا العمولة'); }); });
+$('#storesT').addEventListener('click', function(e){ var b = e.target.closest('[data-susp]'); if (!b) return; var id = b.closest('tr').getAttribute('data-id'); J.api('/api/admin/stores/' + id, { method: 'PATCH', body: { suspended: b.getAttribute('data-susp') === 'true' } }).then(loadStores); });
+$('#storeForm').addEventListener('submit', function(e){ e.preventDefault(); var f = this, b = {}; new FormData(f).forEach(function(v, k){ b[k] = v; }); b.starter_prices = f.elements.starter_prices.checked; b.self_delivery = f.elements.self_delivery.checked;
+  J.api('/api/admin/stores', { method: 'POST', body: b }).then(function(){ J.toast('أضفنا البقالة. صاحبها يدخل من /store'); f.reset(); loadStores(); }).catch(function(err){ J.toast(err.message); }); });
+function loadDrivers(){ J.api('/api/admin/drivers').then(function(r){ $('#driversT').innerHTML = '<tr><th>المندوب</th><th>الحالة</th><th>وصّل</th><th>تقييم</th></tr>' + r.drivers.map(function(d){ return '<tr><td><b>' + esc(d.name) + '</b><br><small class="muted"><span class="ltr">' + esc(String(d.phone).replace(/^966/, '0')) + '</span>' + (d.company ? '، ' + esc(d.company) : '') + '</small></td><td>' + (d.online ? '<span class="pill ok">متصل</span>' : '<span class="pill">غير متصل</span>') + '</td><td class="num">' + d.delivered + '</td><td class="num">' + (d.rating_n ? (d.rating_sum / d.rating_n).toFixed(1) : '—') + '</td></tr>'; }).join(''); }); }
+$('#driverForm').addEventListener('submit', function(e){ e.preventDefault(); var f = this, b = {}; new FormData(f).forEach(function(v, k){ b[k] = v; });
+  J.api('/api/admin/drivers', { method: 'POST', body: b }).then(function(){ J.toast('أضفنا المندوب. يدخل من /driver'); f.reset(); loadDrivers(); }).catch(function(err){ J.toast(err.message); }); });
+function loadMoney(){ J.api('/api/admin/settlements').then(function(r){ $('#settleT').innerHTML = '<tr><th>الجهة</th><th>النوع</th><th>المبلغ</th><th>الحالة</th><th></th></tr>' + (r.settlements.map(function(s){ return '<tr data-id="' + s.id + '"><td><b>' + esc(s.party_name || '') + '</b></td><td>' + (s.party === 'store' ? 'بقالة' : 'مندوب') + '</td><td class="num"><b>' + J.sar(s.amount) + '</b></td><td><span class="pill ' + (s.status === 'paid' ? 'ok' : 'warn') + '">' + (s.status === 'paid' ? 'تحوّل' : 'مستحق') + '</span></td><td>' + (s.status === 'paid' ? '' : '<button class="btn btn-sm btn-primary" data-paid>حوّلته</button>') + '</td></tr>'; }).join('') || '<tr><td colspan="5" class="muted">ما فيه تحويلات</td></tr>'); }); }
+$('#runSettle').addEventListener('click', function(){ J.api('/api/admin/settlements/run', { method: 'POST' }).then(function(r){ J.toast(r.created.length ? 'طلع ' + r.created.length + ' تحويل' : 'ما فيه مستحقات جديدة'); loadMoney(); }); });
+$('#settleT').addEventListener('click', function(e){ var b = e.target.closest('[data-paid]'); if (!b) return; J.api('/api/admin/settlements/' + b.closest('tr').getAttribute('data-id') + '/paid', { method: 'POST' }).then(loadMoney); });
+var KIND = { damaged: 'تالف', expired: 'منتهي', wrong: 'غلط', missing: 'ما وصل' };
+function loadComp(){ J.api('/api/admin/complaints').then(function(r){ $('#compT').innerHTML = '<tr><th>الطلب</th><th>البقالة</th><th>النوع</th><th>الملاحظة</th><th>رجع للعميل</th><th>الوقت</th></tr>' + (r.complaints.map(function(c){ return '<tr><td>#' + c.number + '</td><td>' + esc(c.store_name || '—') + '</td><td><span class="pill bad">' + (KIND[c.kind] || c.kind) + '</span>' + (c.has_photo ? ' <span class="pill">فيها صورة</span>' : '') + '</td><td>' + esc(c.note || '') + '</td><td class="num">' + J.sar(c.refund) + '</td><td>' + J.ago(c.created_at) + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="muted">ما فيه شكاوى</td></tr>'); }); }
+
+/* ---------- settings ---------- */
+var CFG_AR = { commission_pct: 'عمولة البقالة %', cod_enabled: 'الدفع عند الاستلام (1 شغّال، 0 مقفل)', cod_max: 'أعلى مبلغ للدفع عند الاستلام', join_fee: 'توصيل مشوار الجيران (ر.س)', join_driver_pay: 'زيادة المندوب لكل طلب ينضم', join_radius_m: 'أبعد جار ينضم للمشوار (متر)', join_window_min: 'المشوار مفتوح للانضمام (دقيقة)', join_max: 'كم طلب ينضم لنفس المشوار', join_min_order: 'أقل طلب لمشوار الجيران (ر.س)', tab_max: 'أعلى حد للدفتر (ر.س)', delivery_fee: 'رسوم التوصيل (ر.س)', free_delivery_over: 'توصيل مجاني فوق (ر.س)', min_order: 'أقل طلب (ر.س)', driver_pay: 'أجرة المندوب للطلب', driver_pay_extra_pickup: 'زيادة لكل بقالة إضافية', radius_m: 'أبعد بقالة عن العميل (متر)', split_max_m: 'أقصى بعد بين بقالتين (متر)', offer_seconds: 'مهلة رد البقالة (ثانية)', driver_offer_seconds: 'مهلة رد المندوب (ثانية)', stores_per_round: 'عدد البقالات في كل جولة', max_rounds: 'أقصى عدد جولات', price_tolerance_pct: 'نتحمل فرق سعر لين %', substitution_seconds: 'مهلة رد العميل على البديل (ثانية)', late_minutes: 'التأخير اللي يرجّع رسوم التوصيل (دقيقة)', complaint_hours: 'مهلة الشكوى (ساعة)' };
+function loadReady(){ J.api('/api/admin/readiness').then(function(r){ $('#readyL').innerHTML = r.checks.map(function(c){ return '<div class="it"><span class="dot" style="background:' + (c.ok ? 'var(--green)' : c.warn ? '#FFB020' : 'var(--red)') + '"></span><span><b>' + esc(c.title) + '</b><small>' + esc(c.note) + '</small></span></div>'; }).join(''); }); }
+function loadPushStats(){ J.api('/api/admin/push/stats').then(function(r){ $('#pushStats').textContent = r.customers + ' جوال عميل مفعّل الإشعارات، و' + r.stores + ' بقالة، و' + r.drivers + ' مندوب'; }); }
+$('#bcGo').addEventListener('click', function(){ var b = this; b.disabled = true; J.api('/api/admin/push/broadcast', { method: 'POST', body: { title: $('#bcT').value, body: $('#bcB').value } }).then(function(r){ J.toast('وصل لـ' + r.sent + ' جوال'); $('#bcT').value = ''; $('#bcB').value = ''; }).catch(function(e){ J.toast(e.message); }).finally(function(){ b.disabled = false; }); });
+function loadCfg(){ loadReady(); loadPushStats(); J.api('/api/admin/config').then(function(r){ CFG = r.config; $('#mapTiles').value = CFG.map_tiles || ''; $('#cfgFields').innerHTML = Object.keys(CFG_AR).map(function(k){ return '<label class="field">' + CFG_AR[k] + '<input type="number" step="any" min="0" name="' + k + '" value="' + r.config[k] + '"></label>'; }).join(''); paintAi(); }); }
+function paintAi(){ var s = $('#aiState'); s.className = 'pill ' + (CFG.gemini_key_set ? 'ok' : 'warn'); s.textContent = CFG.gemini_key_set ? 'المفتاح مضاف ' + (CFG.gemini_key_hint || '') : 'شغّال بدون مفتاح (الفهم الأساسي)'; }
+$('#cfgForm').addEventListener('submit', function(e){ e.preventDefault(); var b = {}; new FormData(this).forEach(function(v, k){ b[k] = v; }); J.api('/api/admin/config', { method: 'PATCH', body: b }).then(function(r){ CFG = r.config; P = null; J.toast('حفظنا الإعدادات'); }); });
+function saveTiles(v){ J.api('/api/admin/config', { method: 'PATCH', body: { map_tiles: v } }).then(function(r){ CFG = r.config; $('#mapTiles').value = CFG.map_tiles; J.pub = null; J.toast('حفظنا الخريطة، تتحدث في كل التطبيقات'); }).catch(function(err){ J.toast(err.message); }); }
+$('#mapSave').addEventListener('click', function(){ var v = $('#mapTiles').value.trim(); if (!/^https:\/\/.+\{z\}.+\{x\}.+\{y\}/.test(v)) { J.toast('الرابط لازم يبدأ بـ https وفيه {z} و {x} و {y}'); return; } saveTiles(v); });
+$('#mapReset').addEventListener('click', function(){ saveTiles('https://tile.openstreetmap.org/{z}/{x}/{y}.png'); });
+$('#aiSave').addEventListener('click', function(){ var k = $('#aiKey').value.trim(); if (!k) { J.toast('الصق المفتاح أول'); return; } J.api('/api/admin/config', { method: 'PATCH', body: { gemini_api_key: k } }).then(function(r){ CFG = r.config; $('#aiKey').value = ''; paintAi(); J.toast('حفظنا المفتاح، جرّبه الحين'); }); });
+$('#aiDel').addEventListener('click', function(){ J.api('/api/admin/config', { method: 'PATCH', body: { gemini_api_key: '' } }).then(function(r){ CFG = r.config; paintAi(); J.toast('حذفنا المفتاح'); }); });
+$('#aiTest').addEventListener('click', function(){ var b = this; b.disabled = true; $('#aiOut').innerHTML = '<p class="muted">نجرّب: «ابي ثنين حليب المراعي وكرتون موية وخبز»</p>';
+  J.api('/api/admin/ai/test', { method: 'POST', body: {} }).then(function(r){
+    $('#aiOut').innerHTML = r.ok ? '<div class="note-strip" style="display:flex;gap:10px;padding:12px 14px;border-radius:14px;background:var(--green-50)">' + I('check') + '<span><b>' + (r.mode === 'ai' ? 'Gemini شغّال' : 'الفهم الأساسي شغّال (بدون مفتاح)') + '</b><br>' + esc(r.items.map(function(i){ return i.qty + ' ' + i.name_ar; }).join('، ')) + '</span></div>' : '<div class="note-strip" style="display:flex;gap:10px;padding:12px 14px;border-radius:14px;background:var(--red-50);color:var(--red)">' + I('alert') + '<span><b>المفتاح ما اشتغل</b><br><span class="ltr">' + esc(r.error) + '</span></span></div>';
+  }).finally(function(){ b.disabled = false; }); });
+
+if (J.store.get(J.tokenKey)) boot(); else showLogin();
+})();
+</script>
+</body>
+</html>

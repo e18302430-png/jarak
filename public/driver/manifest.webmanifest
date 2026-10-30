@@ -1,0 +1,30 @@
+{
+  "name": "كابتن جارك",
+  "short_name": "كابتن جارك",
+  "lang": "ar",
+  "dir": "rtl",
+  "id": "/driver/",
+  "start_url": "/driver/",
+  "scope": "/driver/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#12A150",
+  "icons": [
+    {
+      "src": "/driver/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/driver/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/driver/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

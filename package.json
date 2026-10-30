@@ -1,0 +1,21 @@
+{
+  "name": "jarak",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "جارك: مقاضيك من بقالة حيّك بسعر الرف",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "web-push": "^3.6.7"
+  }
+}

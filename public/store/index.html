@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#172057">
+<link rel="icon" href="/store/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="/store/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/store/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="جارك للأعمال">
+<title>جارك للأعمال</title>
+<link rel="stylesheet" href="/shared.css">
+<style>
+/* ---------- app ---------- */
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px 100px}
+.hdr{position:sticky;top:0;z-index:20;background:var(--bg);padding:calc(12px + env(safe-area-inset-top,0px)) 0 0;display:flex;flex-direction:column;gap:8px}
+.hdr .row{flex-wrap:nowrap}
+.hdr .mk{width:40px;height:40px;flex:none}.hdr .mk svg{width:100%;height:100%}
+.hdr h1{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr small{color:var(--muted);font-size:12.5px;display:block}
+.open{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;border:1px solid var(--line);border-radius:99px;padding:5px 6px 5px 14px;white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}
+@media (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.parts{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.part{padding:16px;display:flex;flex-direction:column;gap:12px}
+.part .hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.part .hd b{font-size:22px;line-height:1}
+.pick{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.pick li{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:8px 10px;transition:opacity .15s,background .15s}
+.pick li .thumb{width:46px;height:46px;border-radius:10px;flex:none}
+.pick li .q{min-width:36px;height:36px;border-radius:10px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700;font-size:16px}
+.pick li .n{flex:1;min-width:0;display:flex;flex-direction:column;font-size:16px;cursor:pointer;line-height:1.4;font-weight:500}
+.pick li .n small{color:var(--muted);font-size:12.5px;font-family:var(--f);font-weight:400}
+.pick li.done{opacity:.55;background:var(--green-50)}.pick li.done .n{text-decoration:line-through}.pick li.done .q{background:var(--green)}
+.pick li.gone{opacity:.45}
+.note{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:var(--amber-50);color:#93370D;font-size:14px}
+/* incoming order: full screen so nobody misses it */
+.offer-bg{position:fixed;inset:0;z-index:80;background:var(--bg);display:flex;flex-direction:column;animation:fade .2s ease}
+.offer{width:100%;max-width:640px;margin:0 auto;flex:1;overflow:auto;padding:calc(20px + env(safe-area-inset-top,0px)) 18px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+.offer .top{display:flex;align-items:center;gap:16px}
+.ring{width:84px;height:84px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:28px;font-weight:700;background:conic-gradient(var(--brand) calc(var(--p) * 1%), var(--bg-3) 0)}
+.ring span{width:70px;height:70px;border-radius:50%;background:var(--bg);display:grid;place-items:center}
+.offer h2{font-size:26px}
+.offer .top p{color:var(--muted);font-size:14.5px;margin-top:2px}
+.offer .items{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);padding:0 12px}
+.offer .items label{display:flex;align-items:center;gap:12px;padding:12px 0;cursor:pointer;border-bottom:1px solid var(--line)}
+.offer .items label:last-child{border-bottom:0}
+.offer .items label:has(input:checked) b{text-decoration:line-through;color:var(--red)}
+.offer .items input{width:22px;height:22px;accent-color:var(--red);flex:none}
+.offer .items .thumb{width:48px;height:48px;border-radius:10px;flex:none}
+.offer .items b{font-size:16.5px;font-weight:600}
+.offer .items small{color:var(--muted)}
+.offer .tot{display:flex;justify-content:space-between;align-items:baseline;padding:2px;color:var(--muted)}
+.offer .tot b{font-size:22px;color:var(--ink)}
+.offer .btn-green{min-height:60px;font-size:18px;border-radius:14px}
+.ptable td .pin{width:100px;min-height:40px;text-align:center;padding:6px 8px}
+.ptable td b{font-weight:500}
+.ptable .thumb{width:44px;height:44px;border-radius:10px;flex:none}
+.cam{position:relative;cursor:pointer;flex:none;display:block}
+.cam-b{position:absolute;bottom:-4px;inset-inline-end:-4px;width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;border:2px solid #fff}
+.cam-b svg{width:12px;height:12px}
+.sheet .opts{display:flex;flex-direction:column;gap:6px;max-height:50dvh;overflow:auto}
+.sheet .opts button{display:flex;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg);cursor:pointer;text-align:start}
+.hero .vals{list-style:none;padding:0;margin:0}
+/* جارك للأعمال: أسود فخم وليموني */
+.auth{background:linear-gradient(180deg,rgba(17,17,17,.55) 0,rgba(17,17,17,.9) 360px,#111 560px),url(/img/ph/groceries_top.webp) top center/100% auto no-repeat,#111;color:#fff}
+.auth .bar .brand svg{border-radius:10px;box-shadow:0 0 0 1.5px rgba(255,255,255,.3)}
+.auth .bar .brand b{color:#fff}.auth .bar .brand b em{color:rgba(255,255,255,.65)}
+.auth .bar > span.muted{color:rgba(255,255,255,.7)!important}
+.hero h1{font-size:clamp(36px,9.5vw,58px);font-weight:900;line-height:1.05;letter-spacing:-.03em}
+.hero .lede{color:rgba(255,255,255,.75)}
+.badges span{background:rgba(255,255,255,.1);color:#fff}
+.calc,.login-card{color:var(--ink)}
+.feat{background:rgba(255,255,255,.07);color:#fff}.feat span{color:rgba(255,255,255,.7)}
+.showcase{position:relative;height:200px;margin-top:4px}
+.showcase img{position:absolute;filter:drop-shadow(0 18px 22px rgba(0,0,0,.35));animation:pop .6s var(--spring) both,bob 6s ease-in-out infinite;animation-delay:var(--d),calc(var(--d) + .6s)}
+@keyframes pop{from{opacity:0;transform:scale(.3) translateY(30px)}}
+@keyframes bob{50%{transform:translateY(-7px)}}
+.stamp{position:absolute;inset-inline-end:0;top:10px;width:118px;height:118px;border-radius:50%;display:grid;place-items:center;text-align:center;line-height:1;transform:rotate(-10deg);box-shadow:0 18px 30px -10px rgba(0,0,0,.5);animation:stampIn .7s var(--spring) .3s both;z-index:2}
+.stamp b{display:block;font-size:38px;font-weight:900;direction:ltr}
+.stamp small{display:block;font-size:12px;font-weight:700;margin-top:4px}
+@keyframes stampIn{from{opacity:0;transform:rotate(-40deg) scale(.4)}}
+@media (prefers-reduced-motion:reduce){.showcase img,.stamp{animation:none!important}}
+.stamp{background:var(--brand);color:var(--brand-ink)}
+.auth .pill{background:var(--brand)!important;color:var(--brand-ink)!important}
+
+.pushbar{display:flex;align-items:center;gap:12px;width:100%;text-align:start;background:#FFF4D6;border:1px solid #FFE2A0;border-radius:18px;padding:12px 14px;margin:4px 0 14px;font:inherit;color:var(--ink);cursor:pointer}
+.pushbar .ic{width:42px;height:42px;border-radius:50%;background:#FFB020;color:#fff;display:grid;place-items:center;flex:none;animation:pulse 1.6s infinite}
+.pushbar b{font-weight:900;font-size:15.5px}.pushbar small{display:block;color:var(--muted);font-size:13px}
+.code-in{letter-spacing:.6em;text-align:center;font-size:26px!important;font-weight:700}
+.tabsum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.tabsum div{background:var(--bg-2);border-radius:16px;padding:12px}.tabsum small{display:block;color:var(--muted);font-size:12px;font-weight:700}.tabsum b{font-size:22px;font-weight:900}
+.tablist{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.tabc .av{width:42px;height:42px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-weight:900;flex:none}
+.tabc .bal{text-align:end}.tabc .bal b{font-size:19px;font-weight:900;display:block}.tabc .bal small{color:var(--muted);font-size:12px}
+.tabc .bar{height:6px;border-radius:6px;background:var(--bg-2);margin-top:10px;overflow:hidden}.tabc .bar i{display:block;height:100%;background:var(--ink)}
+.tabc.req{border:1.5px solid #FFB020}
+.tabc .in{max-width:120px}
+</style>
+</head>
+<body>
+<section class="auth" id="login" hidden>
+  <div class="bar"><span id="wBrand"></span><span class="muted" style="font-size:13.5px">زبائن أكثر، بدون تكاليف أكثر</span></div>
+  <div class="hero">
+    <div class="stack" style="gap:24px">
+      <div>
+        <span class="pill" style="background:var(--ink);color:#fff">جارك للأعمال</span>
+        <h1 style="margin-top:14px">بيوت الحي<br>تطلب من بقالتك</h1>
+        <p class="lede" id="wLede">جارك يجيب طلبات بيوت الحي على جوالك بسعر رفّك نفسه. أنت تجهّز، ومندوبنا يوصّل، وعمولتنا أقل بكثير من تطبيقات التوصيل.</p>
+        <div class="showcase" aria-hidden="true"><div class="stamp"><span><b>8%</b><small>عمولة بس<br>بدون اشتراك</small></span></div>
+          <img src="/img/p/convenience_store.webp" alt="" style="width:150px;right:0;top:20px;--d:.1s">
+          <img src="/img/p/money_bag.webp" alt="" style="width:86px;right:150px;top:84px;--d:.25s">
+          <img src="/img/p/chart_increasing.webp" alt="" style="width:70px;right:232px;top:10px;--d:.4s">
+        </div>
+        <div class="badges"><span data-icon="check">بدون اشتراك شهري</span><span data-icon="check">بدون رسوم تسجيل</span><span data-icon="check">جوالك يكفي</span></div>
+      </div>
+      <div class="calc" id="calc">
+        <h2>احسبها بنفسك</h2>
+        <label class="q"><span>كم طلب تتوقع يجيك باليوم؟</span><b class="num" id="cN">15</b></label>
+        <input type="range" id="cR" min="5" max="60" step="1" value="15" aria-label="عدد الطلبات باليوم">
+        <div class="out">
+          <div><small>مبيعات زيادة بالشهر</small><b class="num" id="cS">—</b></div>
+          <div><small>عمولة جارك</small><b class="num" id="cC">—</b></div>
+          <div class="hl"><small>يتحوّل لك</small><b class="num" id="cK">—</b></div>
+        </div>
+        <p id="cNote">على متوسط طلب 70 ريال. العمولة على اللي ينباع بس.</p>
+      </div>
+    </div>
+    <div class="stack" style="gap:16px">
+      <form class="login-card" id="loginForm">
+        <h2>دخول البقالة</h2>
+        <label class="field">جوال صاحب البقالة<input type="tel" id="lPhone" class="ltr" placeholder="05xxxxxxxx" required autocomplete="tel"></label>
+        <div id="lCodeWrap" hidden class="stack" style="gap:8px"><small class="muted" id="lSent"></small><input type="text" id="lCode" class="in ltr code-in" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="····" aria-label="رمز الدخول"><div class="row" style="justify-content:space-between"><button type="button" class="btn btn-ghost btn-sm" id="lEdit">تعديل الرقم</button><button type="button" class="btn btn-ghost btn-sm" id="lResend" disabled>أرسل الرمز مرة ثانية</button></div></div>
+        <div class="err" id="lErr"></div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit">أرسل رمز الدخول</button>
+        <p class="muted" style="font-size:13.5px">ما عندك حساب؟ فريق جارك يزورك ويجهّز لك الحساب والأسعار في نفس اليوم.</p>
+      </form>
+      <div id="wHood"></div>
+    </div>
+    <div class="feats span">
+      <div class="feat"><span class="ic" data-icon="wallet"></span><b>فلوسك تتحوّل كل يوم</b><span>كل طلب يتسلّم ينحسب لك، والتحويل يومي على حسابك.</span></div>
+      <div class="feat"><span class="ic" data-icon="tag"></span><b>أسعارك أنت تحددها</b><span>تحط سعر الرف حقك، وتشوف متوسط أسعار الحي جنبه.</span></div>
+      <div class="feat"><span class="ic" data-icon="bike"></span><b>ما تحتاج مندوب</b><span>مندوبنا يستلم من عندك. وإذا عندك عامل توصيل، توصّل بنفسك وتاخذ رسوم التوصيل.</span></div>
+      <div class="feat"><span class="ic" data-icon="users"></span><b>القائمة بلغة عاملك</b><span>أردو، بنغالي، هندي، مليالم أو عربي. يجهّز الطلب بدون غلط.</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap" id="app" hidden>
+  <div class="hdr">
+    <div class="row"><span class="mk" id="mk"></span><span class="sp" style="min-width:0"><small>جارك للأعمال</small><h1 id="sName">البقالة</h1></span>
+      <button class="icon-btn" id="soundBtn" type="button" aria-label="فعّل صوت التنبيه" title="فعّل صوت التنبيه" data-icon="bell"></button>
+      <span class="open"><span id="openTxt">مفتوح</span><button class="switch" id="openSw" role="switch" aria-checked="true" aria-label="المحل مفتوح"></button></span></div>
+    <nav class="tabs"><a href="#orders" data-v="orders"><span data-icon="box"></span>الطلبات<span class="badge" id="nParts" hidden></span></a><a href="#prices" data-v="prices"><span data-icon="tag"></span>الأسعار</a><a href="#tabs" data-v="tabs"><span data-icon="receipt"></span>الدفتر<span class="badge" id="nTabs" hidden></span></a><a href="#money" data-v="money"><span data-icon="wallet"></span>فلوسي</a><a href="#settings" data-v="settings"><span data-icon="gear"></span>الإعدادات</a></nav>
+  </div>
+
+  <section data-view="orders">
+    <div id="pushBar"></div>
+    <div class="stats" id="stats"></div>
+    <div id="parts" class="parts"></div>
+  </section>
+
+  <section data-view="prices" hidden>
+    <div style="display:flex;gap:10px;padding:14px 16px;border-radius:12px;background:var(--bg-2);margin:16px 0 12px;font-size:14px"><span data-icon="tag"></span><span>حط سعر الرف حقك بالضبط لكل منتج عندك، هذا شرط في جارك. «متوسط الحي» يوريك وين سعرك من باقي البقالات. واضغط على صورة أي منتج تصوّره من محلك.</span></div>
+    <input type="search" id="pq" placeholder="ابحث عن منتج">
+    <div class="tabs" id="pcats" style="margin:12px 0"></div>
+    <div class="card" style="padding:0;overflow-x:auto"><table class="ptable" id="ptable"></table></div>
+  </section>
+
+  <section data-view="tabs" hidden>
+    <div class="card sec" style="margin-top:0"><h2>دفتر الحساب</h2><p class="muted" style="font-size:14px">زباينك يطلبون على الحساب ويسددون لك مباشرة. أنت تحدد لكل بيت الحد اللي ترتاح له، وجارك يسجّل كل طلب.</p><div class="tabsum" id="tabSum"></div></div>
+    <div id="tabList" class="tablist"></div>
+  </section>
+  <section data-view="money" hidden>
+    <div class="stats" id="mstats"></div>
+    <h2 style="font-size:20px;margin:6px 2px 10px">التحويلات</h2><div class="card" style="padding:0;overflow:hidden"><table id="settle"></table></div>
+    <h2 style="font-size:20px;margin:20px 2px 10px">الحركات</h2><div class="card" style="padding:0;overflow:hidden"><table id="ledger"></table></div>
+  </section>
+
+  <section data-view="settings" hidden>
+    <div class="card stack" style="padding:18px;max-width:560px">
+      <label class="field">لغة قائمة التجهيز للعامل<select id="lang"></select></label>
+      <label class="row" style="font-weight:600"><span class="sp">نوصّل بنفسنا (عندنا عامل توصيل)</span><button class="switch" id="selfSw" role="switch" aria-checked="false" aria-label="نوصّل بنفسنا"></button></label>
+      <p class="muted" style="font-size:13.5px">إذا فعّلتها، الطلبات اللي من بقالتك لحالها توصّلها أنت وتاخذ رسوم التوصيل كاملة في التحويل. عامل التوصيل لازم يكون نظامي.</p>
+      <button class="btn btn-danger" id="logout" type="button"><span data-icon="logout"></span>تسجيل خروج</button>
+    </div>
+  </section>
+</div>
+
+<div id="offerHost"></div>
+<div id="sheetHost"></div>
+<div class="toast" id="toast" role="status"></div>
+<script src="/shared.js"></script>
+<script>
+(function(){
+'use strict';
+var $ = J.$, $$ = J.$$, esc = J.esc, I = J.icon;
+J.tokenKey = 'jarak-store-token';
+var ME = null, OFFERS = [], PARTS = [], PRODUCTS = [], CATS = [], pcat = '', es = null, sound = false, lang = 'ur';
+J.onUnauthorized = function(){ J.store.set(J.tokenKey, null); showLogin(); };
+J.ROLE = 'store'; J.paintIcons(); $('#wBrand').innerHTML = J.brand(); $('#mk').innerHTML = J.MARK;
+
+/* ---------- welcome: the calculator that answers «وش أستفيد؟» ---------- */
+var COMM = 8, AOV = 70;
+function calc(){
+  var n = +$('#cR').value, sales = n * AOV * 30, comm = sales * COMM / 100;
+  $('#cN').textContent = n; $('#cS').textContent = fmt(sales); $('#cC').textContent = fmt(comm); $('#cK').textContent = fmt(sales - comm);
+}
+function fmt(v){ return Math.round(v).toLocaleString('en-US'); }
+$('#cR').addEventListener('input', calc);
+function showLogin(){
+  $('#login').hidden = false; $('#app').hidden = true; calc();
+  J.loadPublic().then(function(p){
+    COMM = p.terms.commission_pct; calc();
+    $('#wLede').textContent = 'جارك يجيب طلبات بيوت حي ' + p.zone.name + ' على جوالك بسعر رفّك نفسه. أنت تجهّز، ومندوبنا يوصّل، وتدفع عمولة ' + COMM + '% بس على اللي ينباع.';
+    $('#cNote').textContent = 'على متوسط طلب ' + AOV + ' ريال وعمولة ' + COMM + '% بس. بدون اشتراك شهري، وبدون رسوم تسجيل، وبدون جهاز. العمولة على اللي ينباع بس.';
+    J.hood($('#wHood'), p, { caption: p.stores.length + ' بقالات في ' + esc(p.zone.name) + ' معنا' });
+  }).catch(function(){});
+}
+J.otpLogin('/api/store', function(t){ J.store.set(J.tokenKey, t); boot(); });
+
+function boot(){
+  J.api('/api/store/me').then(function(j){
+    ME = j; lang = j.store.worker_lang;
+    $('#login').hidden = true; $('#app').hidden = false; $('#sName').textContent = j.store.name;
+    paintOpen(); paintStats(); paintSound(); J._awake = true; J.keepAwake(true); route(); loadProducts(true).then(function(){ loadOffers(); loadParts(); }); stream(); loadTabs();
+  }).catch(function(){ showLogin(); });
+}
+function paintOpen(){ $('#openSw').setAttribute('aria-checked', String(ME.store.is_open)); $('#openTxt').textContent = ME.store.is_open ? 'مفتوح' : 'مسكّر'; $('#selfSw').setAttribute('aria-checked', String(ME.store.self_delivery)); }
+function paintSound(){ var b = $('#soundBtn'), on = J.soundOn() && J.pushState() === 'granted'; sound = on; b.style.background = on ? 'var(--green-50)' : '#FFE8E6'; b.style.color = on ? 'var(--green)' : 'var(--red)';
+  $('#pushBar').innerHTML = on ? '' : '<button class="pushbar" id="pushGo" type="button"><span class="ic">' + I('bell') + '</span><span class="sp"><b>فعّل التنبيهات</b><small>عشان يرن جوالك على كل طلب حتى والتطبيق مقفول</small></span>' + I('back') + '</button>';
+  var g = $('#pushGo'); if (g) g.onclick = enableAlerts; b.setAttribute('aria-label', sound ? 'صوت التنبيه شغّال' : 'فعّل صوت التنبيه'); }
+$('#openSw').addEventListener('click', function(){ var v = !ME.store.is_open; J.api('/api/store/me', { method: 'PATCH', body: { is_open: v } }).then(function(){ ME.store.is_open = v; paintOpen(); J.toast(v ? 'مفتوح: توصلك الطلبات' : 'مسكّر: ما توصلك طلبات'); }); });
+$('#selfSw').addEventListener('click', function(){ var v = !ME.store.self_delivery; J.api('/api/store/me', { method: 'PATCH', body: { self_delivery: v } }).then(function(){ ME.store.self_delivery = v; paintOpen(); }); });
+function enableAlerts(){ J.unlockSound(); try { J.store.set('jarak-sound', 'on'); } catch(e) {} J.sound('order');
+  J.enablePush('/api/store/push', '/store/sw.js', '/store/').then(function(ok){ paintSound(); J.toast(ok ? 'التنبيهات شغّالة: صوت ورنّة حتى والجوال مقفول' : 'الصوت شغّال. عشان توصلك والتطبيق مقفول اسمح بالإشعارات من إعدادات المتصفح'); }); }
+$('#soundBtn').addEventListener('click', enableAlerts);
+function stat(l, v, cls){ return '<div class="card stat"><small>' + l + '</small><b class="num" ' + (cls ? 'style="color:var(--' + cls + ')"' : '') + '>' + v + '</b></div>'; }
+function paintStats(){
+  $('#stats').innerHTML = stat('طلبات اليوم', ME.today.n) + stat('مبيعات اليوم', J.sar(ME.today.sales), 'palm') + stat('متوسط ردك', ME.avg_response_s != null ? ME.avg_response_s + ' ث' : '—') + stat('تقييمك', ME.rating != null ? ME.rating + ' من 5' : '—');
+}
+function route(){
+  var v = location.hash.slice(1) || 'orders'; if (['orders', 'prices', 'tabs', 'money', 'settings'].indexOf(v) < 0) v = 'orders';
+  $$('[data-view]').forEach(function(s){ s.hidden = s.getAttribute('data-view') !== v; });
+  $$('.hdr .tabs a[data-v]').forEach(function(a){ if (a.getAttribute('data-v') === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (v === 'prices') loadProducts(); if (v === 'tabs') loadTabs(); if (v === 'money') loadMoney(); if (v === 'settings') paintSettings();
+}
+window.addEventListener('hashchange', route);
+
+/* ---------- live ---------- */
+function stream(){ if (es) es.close(); es = J.sse('/api/store/stream', function(m){
+  if (m.type === 'offer') { loadOffers(); J.alarm((ME && ME.cfg.offer_seconds) || 60, 'طلب جديد'); }
+  if (m.type === 'tab_request') { J.sound('attention'); J.vibrate([300, 120, 300]); J.toast((m.name || 'عميل') + ' يطلب يفتح دفتر عندك'); loadTabs(); }
+  if (m.type === 'offer_closed') { OFFERS = OFFERS.filter(function(o){ return o.id !== m.offer_id; }); paintOffer(); }
+  if (m.type === 'part' || m.type === 'sub_answer') { loadParts(); if (m.type === 'sub_answer') J.toast(m.approved ? 'العميل وافق على البديل' : 'العميل رفض البديل، شيله من الطلب'); }
+}); }
+setInterval(function(){ if (ME) { loadParts(); J.api('/api/store/me').then(function(j){ ME = j; paintStats(); }); } }, 30000);
+
+/* ---------- الدفتر ---------- */
+function loadTabs(){ J.api('/api/store/tabs').then(function(r){
+  var req = r.tabs.filter(function(t){ return t.status === 'requested'; }), open = r.tabs.filter(function(t){ return t.status === 'open'; });
+  var nb = $('#nTabs'); nb.hidden = !req.length; nb.textContent = req.length;
+  var due = open.reduce(function(a, t){ return a + t.balance; }, 0);
+  $('#tabSum').innerHTML = '<div><small>لك عند الزباين</small><b class="num">' + J.sar(due) + '</b></div><div><small>دفاتر مفتوحة</small><b class="num">' + open.length + '</b></div><div><small>طلبات جديدة</small><b class="num">' + req.length + '</b></div>';
+  $('#tabList').innerHTML = (req.concat(open)).map(function(t){
+    var head = '<div class="row" style="flex-wrap:nowrap"><span class="av">' + esc((t.name || 'ع')[0]) + '</span><span class="sp"><b>' + esc(t.name || 'عميل') + '</b><br><small class="muted ltr">' + esc(t.phone) + '</small>' + (t.orders_here ? '<small class="muted"> · ' + t.orders_here + ' طلبات منك</small>' : '') + '</span>';
+    if (t.status === 'requested') return '<div class="card tabc req" data-tab="' + t.id + '">' + head + '<span class="pill warn">يطلب دفتر</span></div><div class="row" style="margin-top:10px;flex-wrap:nowrap"><input class="in num" type="number" min="50" step="50" value="300" data-lim aria-label="حد الدفتر"><button class="btn btn-green" data-ok>افتح بحد</button><button class="btn btn-ghost" data-no>لا</button></div></div>';
+    var pct = t.credit_limit ? Math.min(100, t.balance / t.credit_limit * 100) : 0;
+    return '<div class="card tabc" data-tab="' + t.id + '">' + head + '<span class="bal"><b class="num">' + J.sar(t.balance) + '</b><small>من ' + J.sar(t.credit_limit) + '</small></span></div><div class="bar"><i style="width:' + pct + '%"></i></div>' + (t.balance > 0 ? '<div class="row" style="margin-top:10px;flex-wrap:nowrap"><input class="in num" type="number" min="1" step="1" value="' + Math.round(t.balance) + '" data-amt aria-label="المبلغ اللي سدّده"><button class="btn btn-primary" data-pay>سدّد</button></div>' : '') + '</div>';
+  }).join('') || '<div class="empty">ما فيه دفاتر للحين. لما زبون يطلب يفتح دفتر عندك، يطلع هنا ويرن جوالك.</div>';
+}); }
+$('#tabList').addEventListener('click', function(e){
+  var card = e.target.closest('[data-tab]'); if (!card) return; var id = card.getAttribute('data-tab'), body = null;
+  if (e.target.closest('[data-ok]')) body = { action: 'approve', limit: card.querySelector('[data-lim]').value };
+  else if (e.target.closest('[data-no]')) body = { action: 'reject' };
+  else if (e.target.closest('[data-pay]')) body = { action: 'pay', amount: card.querySelector('[data-amt]').value };
+  if (!body) return;
+  J.api('/api/store/tabs/' + id, { method: 'POST', body: body }).then(function(){ J.toast(body.action === 'approve' ? 'فتحنا الدفتر' : body.action === 'pay' ? 'سجّلنا السداد' : 'تمام'); loadTabs(); }).catch(function(err){ J.toast(err.message); });
+});
+
+/* ---------- incoming offers ---------- */
+var tick = null;
+function loadOffers(){ J.api('/api/store/offers').then(function(r){ var now = Date.now(); OFFERS = r.offers.map(function(o){ o.deadline = now + o.seconds_left * 1000; return o; }); paintOffer(); }); }
+function prod(it){ return PRODUCTS.find(function(x){ return x.id === it.product_id; }) || {}; }
+function nm(it){ var p = PRODUCTS.find(function(x){ return x.id === it.product_id; }); return p ? J.nameIn(p, lang) : it.name_ar; }
+function paintOffer(){
+  clearInterval(tick);
+  var o = OFFERS[0];
+  if (!o) { $('#offerHost').innerHTML = ''; J.stopAlarm(); return; }
+  var total = o.items.reduce(function(a, i){ return a + i.price * i.qty; }, 0);
+  var secs = (ME && ME.cfg.offer_seconds) || 60;
+  $('#offerHost').innerHTML = '<div class="offer-bg"><div class="offer" role="alertdialog" aria-label="طلب جديد"><div class="top"><div class="ring" id="ring" style="--p:100"><span id="secs">' + secs + '</span></div><div><h2>طلب جديد</h2>' + (o.regular ? '<span class="pill ok">زبونك' + (o.customer_name ? ': ' + esc(o.customer_name) : '') + '</span> ' : '') + (o.payment_method === 'tab' ? '<span class="pill warn">على الدفتر</span> ' : '') + (o.joined ? '<span class="pill night">مشوار جيران، نفس المندوب</span>' : '') + '<p>علّم على اللي <b>ما عندك</b> بس.' + (o.regular ? ' الطلب لك أول قبل أي بقالة ثانية.' : ' أول بقالة ترد تاخذ الطلب.') + '</p></div></div>' +
+    '<div class="items">' + o.items.map(function(i){ return '<label><input type="checkbox" value="' + i.product_id + '" aria-label="ما عندي ' + esc(i.name_ar) + '">' + J.img(prod(i)) + '<span class="sp"><b class="lang-' + lang + '">' + i.qty + ' × ' + esc(nm(i)) + '</b>' + (lang !== 'ar' ? '<br><small>' + esc(i.name_ar) + ' ' + esc(i.size || '') + '</small>' : '<br><small>' + esc(i.size || '') + '</small>') + '</span><span class="num">' + J.sar(i.price * i.qty) + '</span></label>'; }).join('') + '</div>' +
+    '<div class="tot"><span>قيمة الطلب بأسعارك</span><b class="num">' + J.sar(total) + '</b></div>' +
+    '<button class="btn btn-green btn-block" id="oAcc" type="button">' + I('check') + 'عندي كله، نجهّزه</button><button class="btn btn-ghost btn-block" id="oDec" type="button">ما عندي</button></div></div>';
+  $$('.offer .items input').forEach(function(c){ c.onchange = function(){ var n = $$('.offer .items input:checked').length; $('#oAcc').innerHTML = n ? I('check') + 'عندي الباقي (' + (o.items.length - n) + ')' : I('check') + 'عندي كله، نجهّزه'; $('#oAcc').disabled = n === o.items.length; }; });
+  $('#oAcc').onclick = function(){ var miss = $$('.offer .items input:checked').map(function(c){ return c.value; }); respond(o, miss.length ? 'partial' : 'accept', miss); };
+  $('#oDec').onclick = function(){ respond(o, 'decline', []); };
+  var upd = function(){ var left = Math.max(0, Math.round((o.deadline - Date.now()) / 1000)); var s = $('#secs'); if (!s) return; s.textContent = left; $('#ring').style.setProperty('--p', left / secs * 100); if (!left) { OFFERS.shift(); paintOffer(); } };
+  upd(); tick = setInterval(upd, 500);
+}
+function respond(o, action, missing){
+  J.stopAlarm();
+  $$('.offer button').forEach(function(b){ b.disabled = true; });
+  J.api('/api/store/offers/' + o.id, { method: 'POST', body: { action: action, missing: missing } }).then(function(r){
+    OFFERS = OFFERS.filter(function(x){ return x.id !== o.id; }); paintOffer();
+    J.toast(r.status === 'accepted' ? 'الطلب لك، جهّزه الحين' : r.late ? 'سبقتك بقالة ثانية هالمرة' : 'تمام');
+    loadParts();
+  }).catch(function(err){ J.toast(err.message); paintOffer(); });
+}
+
+/* ---------- active orders ---------- */
+function loadParts(){ J.api('/api/store/parts').then(function(r){ PARTS = r.parts; paintParts(); }); }
+function paintParts(){
+  var nb = $('#nParts'); nb.hidden = !PARTS.length; nb.textContent = PARTS.length;
+  if (!PARTS.length) { $('#parts').innerHTML = '<div class="card empty" style="grid-column:1/-1"><p style="font-size:17px;color:var(--ink);font-weight:600">ما فيه طلبات الحين</p><p>خلّ الشاشة مفتوحة. أول ما يجي طلب تطلع لك شاشة كاملة مع رنّة.</p></div>'; return; }
+  $('#parts').innerHTML = PARTS.map(function(p){
+    var self = ME.store.self_delivery && !p.driver_id && p.parts_n === 1;
+    var who = p.driver_name ? I('bike') + esc(p.driver_name) : self ? 'توصّله أنت' : 'ننتظر مندوب';
+    return '<div class="card part" data-part="' + p.id + '"><div class="hd"><b>#' + p.number + '</b><span class="pill ' + (p.status === 'ready' ? 'ok' : 'warn') + '">' + (p.status === 'ready' ? 'جاهز للاستلام' : p.status === 'picked' ? 'طلع مع عاملك' : 'جهّزه') + '</span>' + (p.parts_n > 1 ? '<span class="pill">مع بقالة ثانية</span>' : '') + '<span class="sp"></span><span class="muted row" style="gap:6px;font-size:14px">' + who + '</span></div>' +
+      (p.note ? '<div class="note">' + I('receipt') + '<span>' + esc(p.note) + '</span></div>' : '') +
+      '<ul class="pick">' + p.items.map(function(it, i){
+        var gone = it.status === 'removed', sub = it.status === 'sub', waiting = p.pending_subs.indexOf(i) >= 0;
+        var name = sub ? it.sub.name_ar + ' (بديل)' : nm(it);
+        return '<li class="' + (gone ? 'gone' : '') + '"><span class="q num">' + it.qty + '</span>' + J.img(sub ? {} : prod(it)) + '<span class="n lang-' + (sub ? 'ar' : lang) + '" data-tick>' + esc(name) + (lang !== 'ar' && !sub ? '<small>' + esc(it.name_ar) + ' ' + esc(it.size || '') + '</small>' : '<small>' + esc(it.size || '') + '</small>') + (gone ? '<small>شلناه من الطلب</small>' : '') + (waiting ? '<small>ننتظر رد العميل على البديل</small>' : '') + '</span>' +
+          (p.status === 'preparing' && it.status === 'ok' && !waiting ? '<button class="icon-btn" style="width:40px;height:40px" data-act="menu" data-i="' + i + '" aria-label="خلص أو بديل">' + I('alert') + '</button>' : '') + '</li>';
+      }).join('') + '</ul>' +
+      (p.status === 'preparing' ? '<button class="btn btn-primary btn-block btn-lg" data-act="ready">' + I('box') + 'جاهز للاستلام</button>' : '') +
+      (self && p.status === 'ready' ? '<button class="btn btn-saffron btn-block btn-lg" data-act="out">' + I('bike') + 'طلع مع عاملنا</button>' : '') +
+      (self && p.status === 'picked' ? '<div class="row" style="flex-wrap:nowrap"><input class="in ltr" style="text-align:center;letter-spacing:.4em;font-size:20px" placeholder="رمز العميل" data-code inputmode="numeric" maxlength="4"><button class="btn btn-palm" data-act="delivered">سلّمت</button></div>' : '') +
+      '</div>';
+  }).join('');
+}
+$('#parts').addEventListener('click', function(e){
+  var t = e.target.closest('[data-tick]'); if (t) { t.closest('li').classList.toggle('done'); return; }
+  var b = e.target.closest('[data-act]'); if (!b) return;
+  var pid = b.closest('[data-part]').getAttribute('data-part'), act = b.getAttribute('data-act');
+  if (act === 'ready') return post('/api/store/parts/' + pid + '/ready', {}, 'تمام، بلّغنا المندوب');
+  if (act === 'out') return post('/api/store/parts/' + pid + '/self', { action: 'out' }, 'بلّغنا العميل إن طلبه طلع');
+  if (act === 'delivered') return post('/api/store/parts/' + pid + '/self', { action: 'delivered', code: b.closest('[data-part]').querySelector('[data-code]').value }, 'تم التسليم');
+  if (act === 'menu') itemMenu(pid, +b.getAttribute('data-i'));
+});
+function post(url, body, ok){ J.api(url, { method: 'POST', body: body }).then(function(){ J.toast(ok); loadParts(); }).catch(function(err){ J.toast(err.message); }); }
+function sheet(html){ $('#sheetHost').innerHTML = '<div class="sheet-bg" id="sbg"><div class="sheet">' + html + '</div></div>'; $('#sbg').onclick = function(e){ if (e.target.id === 'sbg') $('#sheetHost').innerHTML = ''; }; }
+function itemMenu(pid, i){
+  var p = PARTS.find(function(x){ return x.id === pid; }), it = p.items[i];
+  sheet('<h2>' + esc(it.name_ar) + ' × ' + it.qty + '</h2><button class="btn btn-block btn-lg" id="mSub" type="button">' + I('repeat') + 'اقترح بديل للعميل</button><button class="btn btn-danger btn-block btn-lg" id="mGone" type="button">' + I('x') + 'خلص، شيله من الطلب</button><p class="muted" style="font-size:13.5px">إذا شلته، يرجع للعميل سعره تلقائياً.</p>');
+  $('#mGone').onclick = function(){ $('#sheetHost').innerHTML = ''; post('/api/store/parts/' + pid + '/missing', { index: i }, 'شلناه ورجّعنا سعره للعميل'); };
+  $('#mSub').onclick = function(){
+    (PRODUCTS.length ? Promise.resolve() : loadProducts(true)).then(function(){
+      var same = PRODUCTS.filter(function(x){ return x.price != null && x.available && x.id !== it.product_id && x.category === (PRODUCTS.find(function(y){ return y.id === it.product_id; }) || {}).category; });
+      sheet('<h2>اختر البديل</h2><p class="muted">العميل يوافق أو يرفض خلال 3 دقايق. لو البديل أغلى، العميل ما يدفع زيادة.</p><input type="search" class="in" id="sq" placeholder="ابحث"><div class="opts" id="sopts"></div>');
+      var paint = function(){ var s = $('#sq').value.trim(); $('#sopts').innerHTML = same.filter(function(x){ return !s || x.name_ar.indexOf(s) >= 0; }).slice(0, 40).map(function(x){ return '<button type="button" data-pid="' + x.id + '"><span>' + esc(x.name_ar) + ' <small class="muted">' + esc(x.size || '') + '</small></span><b class="num">' + J.sar(x.price) + '</b></button>'; }).join('') || '<div class="empty">ما فيه منتج مناسب</div>'; };
+      $('#sq').oninput = paint; paint();
+      $('#sopts').onclick = function(e){ var b = e.target.closest('[data-pid]'); if (!b) return; $('#sheetHost').innerHTML = ''; post('/api/store/parts/' + pid + '/substitute', { index: i, product_id: b.getAttribute('data-pid') }, 'أرسلنا البديل للعميل'); };
+    });
+  };
+}
+
+/* ---------- prices ---------- */
+function loadProducts(silent){ return J.api('/api/store/products').then(function(r){ PRODUCTS = r.products; CATS = r.categories; if (!silent) paintProducts(); }); }
+function paintProducts(){
+  var have = PRODUCTS.filter(function(p){ return p.price != null; }).length;
+  $('#pcats').innerHTML = ['<a href="javascript:void 0" data-c=""' + (!pcat ? ' aria-current="page"' : '') + '>الكل (' + have + ' من ' + PRODUCTS.length + ')</a>'].concat(CATS.map(function(c){ return '<a href="javascript:void 0" data-c="' + esc(c) + '"' + (pcat === c ? ' aria-current="page"' : '') + '>' + esc(c) + '</a>'; })).join('');
+  var s = $('#pq').value.trim();
+  var list = PRODUCTS.filter(function(p){ return (!pcat || p.category === pcat) && (!s || (p.name_ar + ' ' + (p.size || '')).indexOf(s) >= 0); });
+  $('#ptable').innerHTML = '<tr><th>المنتج</th><th>سعرك</th><th>عندك؟</th><th>متوسط الحي</th></tr>' + list.map(function(p){
+    var has = p.price != null, diff = has && p.market_avg ? (p.price - p.market_avg) / p.market_avg : 0;
+    return '<tr data-pid="' + p.id + '"><td><div class="row" style="flex-wrap:nowrap"><label class="cam" title="صوّر المنتج">' + J.img(p) + '<span class="cam-b">' + I('camera') + '</span><input type="file" accept="image/*" capture="environment" data-photo="' + p.id + '" hidden></label><span><b>' + esc(p.name_ar) + '</b><br><small class="muted">' + esc(p.size || '') + (p.confidence != null && p.confidence < 0.3 && has ? '، قلت «ما عندي» كثير' : '') + '</small></span></div></td>' +
+      '<td><input class="in pin num" type="number" step="0.25" min="0" value="' + (has ? p.price : '') + '" placeholder="—" aria-label="سعر ' + esc(p.name_ar) + '"></td>' +
+      '<td><button class="switch" role="switch" aria-checked="' + (has && p.available) + '" aria-label="متوفر"></button></td>' +
+      '<td class="num">' + (p.market_avg ? J.sar(p.market_avg) + (has && Math.abs(diff) > 0.04 ? '<br><small style="color:var(--' + (diff > 0 ? 'danger' : 'palm') + ')">' + (diff > 0 ? 'أغلى ' : 'أرخص ') + Math.round(Math.abs(diff) * 100) + '%</small>' : '') : '—') + '</td></tr>';
+  }).join('');
+}
+$('#pq').addEventListener('input', paintProducts);
+$('#ptable').addEventListener('change', function(e){ var f = e.target.files && e.target.files[0], pid = e.target.getAttribute('data-photo'); if (!f || !pid) return;
+  J.toast('نرفع الصورة...');
+  J.shrink(f, 1000).then(function(img){ return J.api('/api/store/products/' + pid + '/photo', { method: 'POST', body: { photo: img } }); })
+    .then(function(){ J.toast('وصلت الصورة، تنعرض للعملاء بعد مراجعة جارك'); }).catch(function(err){ J.toast(err.message); }); e.target.value = '';
+});
+$('#pcats').addEventListener('click', function(e){ var a = e.target.closest('[data-c]'); if (!a) return; pcat = a.getAttribute('data-c'); paintProducts(); });
+$('#ptable').addEventListener('change', function(e){ if (!e.target.classList.contains('pin')) return; var tr = e.target.closest('tr'), p = PRODUCTS.find(function(x){ return x.id === tr.getAttribute('data-pid'); });
+  if (!e.target.value) return;
+  J.api('/api/store/products/' + p.id, { method: 'PUT', body: { price: e.target.value, available: true } }).then(function(){ p.price = +e.target.value; p.available = true; p.confidence = 0.9; paintProducts(); J.toast('حفظنا السعر'); }).catch(function(err){ J.toast(err.message); }); });
+$('#ptable').addEventListener('click', function(e){ var sw = e.target.closest('.switch'); if (!sw) return; var tr = sw.closest('tr'), p = PRODUCTS.find(function(x){ return x.id === tr.getAttribute('data-pid'); });
+  if (p.price == null) { J.toast('حط السعر أول'); tr.querySelector('.pin').focus(); return; }
+  J.api('/api/store/products/' + p.id, { method: 'PUT', body: { price: p.price, available: !p.available } }).then(function(){ p.available = !p.available; paintProducts(); }); });
+
+/* ---------- money ---------- */
+var KIND = { store_earning: 'لك من طلب', store_penalty: 'خصم شكوى', commission: 'عمولة جارك' };
+function loadMoney(){
+  J.api('/api/store/me').then(function(j){ ME = j; $('#mstats').innerHTML = stat('لك ولسه ما تحوّل', J.sar(j.due), 'palm') + stat('عمولة جارك', j.cfg.commission_pct + '%') + stat('نسبة قبولك', j.accept_rate != null ? j.accept_rate + '%' : '—') + stat('تقييمك', j.rating != null ? j.rating + ' من 5' : '—'); });
+  J.api('/api/store/earnings').then(function(r){
+    $('#settle').innerHTML = '<tr><th>التاريخ</th><th>المبلغ</th><th>الحالة</th></tr>' + (r.settlements.map(function(s){ return '<tr><td>' + J.ago(s.created_at) + '</td><td class="num"><b>' + J.sar(s.amount) + '</b></td><td><span class="pill ' + (s.status === 'paid' ? 'ok' : 'warn') + '">' + (s.status === 'paid' ? 'تحوّل' : 'قيد التحويل') + '</span></td></tr>'; }).join('') || '<tr><td colspan="3" class="muted">ما فيه تحويلات للحين</td></tr>');
+    $('#ledger').innerHTML = '<tr><th>الطلب</th><th>النوع</th><th>المبلغ</th></tr>' + (r.ledger.filter(function(l){ return l.kind !== 'commission'; }).map(function(l){ return '<tr><td>#' + (l.number || '—') + '</td><td>' + (KIND[l.kind] || l.kind) + '</td><td class="num" style="color:' + (l.amount < 0 ? 'var(--danger)' : 'inherit') + '">' + J.sar(l.amount) + '</td></tr>'; }).join('') || '<tr><td colspan="3" class="muted">ما فيه حركات للحين</td></tr>');
+  });
+}
+
+/* ---------- settings ---------- */
+function paintSettings(){ $('#lang').innerHTML = Object.keys(J.LANGS).map(function(k){ return '<option value="' + k + '"' + (k === lang ? ' selected' : '') + '>' + J.LANGS[k] + '</option>'; }).join(''); paintOpen(); }
+$('#lang').addEventListener('change', function(){ var v = this.value; J.api('/api/store/me', { method: 'PATCH', body: { worker_lang: v } }).then(function(){ lang = v; ME.store.worker_lang = v; J.toast('غيّرنا اللغة'); paintParts(); }); });
+$('#logout').addEventListener('click', function(){ J.store.set(J.tokenKey, null); showLogin(); });
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/store/sw.js', { scope: '/store/' }).catch(function(){});
+if (J.store.get(J.tokenKey)) boot(); else showLogin();
+})();
+</script>
+</body>
+</html>

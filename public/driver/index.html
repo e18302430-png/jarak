@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#172057">
+<link rel="icon" href="/driver/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="/driver/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/driver/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="كابتن جارك">
+<title>كابتن جارك</title>
+<link rel="stylesheet" href="/shared.css">
+<style>
+/* كابتن جارك: تطبيق مستقل بلونه الأخضر */
+:root{--brand:#12A150;--brand-600:#0E8A44;--brand-50:#E8F7EE;--brand-100:#C9EFD8;--brand-ink:#FFFFFF}
+/* كابتن جارك: أخضر */
+.auth{background:linear-gradient(180deg,rgba(14,159,79,.55) 0,rgba(14,159,79,.9) 360px,#0E9F4F 560px),url(/img/ph/rider.webp) top center/100% auto no-repeat,#0E9F4F;color:#fff}
+.auth .bar .brand svg{border-radius:10px;box-shadow:0 0 0 1.5px rgba(255,255,255,.3)}
+.auth .bar .brand b{color:#fff}.auth .bar .brand b em{color:rgba(255,255,255,.65)}
+.auth .bar > span.muted{color:rgba(255,255,255,.7)!important}
+.hero h1{font-size:clamp(36px,9.5vw,58px);font-weight:900;line-height:1.05;letter-spacing:-.03em}
+.hero .lede{color:rgba(255,255,255,.75)}
+.badges span{background:rgba(255,255,255,.1);color:#fff}
+.calc,.login-card{color:var(--ink)}
+.feat{background:rgba(255,255,255,.07);color:#fff}.feat span{color:rgba(255,255,255,.7)}
+.showcase{position:relative;height:200px;margin-top:4px}
+.showcase img{position:absolute;filter:drop-shadow(0 18px 22px rgba(0,0,0,.35));animation:pop .6s var(--spring) both,bob 6s ease-in-out infinite;animation-delay:var(--d),calc(var(--d) + .6s)}
+@keyframes pop{from{opacity:0;transform:scale(.3) translateY(30px)}}
+@keyframes bob{50%{transform:translateY(-7px)}}
+.stamp{position:absolute;inset-inline-end:0;top:10px;width:118px;height:118px;border-radius:50%;display:grid;place-items:center;text-align:center;line-height:1;transform:rotate(-10deg);box-shadow:0 18px 30px -10px rgba(0,0,0,.5);animation:stampIn .7s var(--spring) .3s both;z-index:2}
+.stamp b{display:block;font-size:38px;font-weight:900;direction:ltr}
+.stamp small{display:block;font-size:12px;font-weight:700;margin-top:4px}
+@keyframes stampIn{from{opacity:0;transform:rotate(-40deg) scale(.4)}}
+@media (prefers-reduced-motion:reduce){.showcase img,.stamp{animation:none!important}}
+.stamp{background:#111;color:var(--brand-100)}
+.auth .pill{background:#111!important;color:#fff!important}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px 40px}
+.hdr{padding:calc(14px + env(safe-area-inset-top,0px)) 0 12px;display:flex;align-items:center;gap:12px}
+.hdr .mk{width:40px;height:40px;flex:none}.hdr .mk svg{width:100%;height:100%}
+.hdr h1{font-size:19px}
+.hdr small{display:block;color:var(--muted);font-size:12.5px}
+.online{display:flex;align-items:center;gap:14px;width:100%;padding:16px;border-radius:var(--r-lg);background:var(--bg);color:var(--ink);cursor:pointer;text-align:start;border:1px solid var(--line);box-shadow:var(--sh-1)}
+.online .ic{width:52px;height:52px;border-radius:50%;background:var(--bg-2);display:grid;place-items:center;flex:none;color:var(--muted)}
+.online .ic svg{width:26px;height:26px}
+.online b{font-size:19px;display:block;line-height:1.3}
+.online small{color:var(--muted)}
+.online.on{background:var(--green);color:#fff;border-color:var(--green)}
+.online.on .ic{background:rgba(255,255,255,.2);color:#fff}
+.online.on small{color:rgba(255,255,255,.85)}
+.online.on .switch{background:rgba(255,255,255,.35)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.stats .stat b{font-size:20px}
+.offer{border-radius:var(--r-lg);background:var(--bg);border:2px solid var(--brand);padding:16px;display:flex;flex-direction:column;gap:12px;margin-bottom:12px;animation:up .3s ease;box-shadow:var(--sh-3)}
+.offer .pay{font-size:38px;font-weight:700;line-height:1;color:var(--ink)}
+.offer .pay small{font-size:16px;color:var(--muted);font-weight:500}
+.offer .route{display:flex;flex-direction:column;gap:8px;font-size:15px}
+.offer .route div{display:flex;gap:10px;align-items:center}
+.offer .route svg.i{color:var(--brand);width:20px;height:20px}
+.job{padding:16px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.job .hd{display:flex;align-items:center;gap:8px}
+.job .hd b{font-size:22px}
+.stop{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px}
+.stop .ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--brand-50);color:var(--brand)}
+.stop.done{opacity:.6}
+.stop.done .ic{background:var(--green);color:#fff}
+.stop.home .ic{background:var(--ink);color:#fff}
+.stop .t{flex:1;min-width:0}
+.dmap{position:relative;height:300px;border-radius:24px;overflow:hidden;margin-top:14px;box-shadow:0 1px 0 var(--line)}
+.dmap #dMap{position:absolute;inset:0}
+.dmap .dcap{position:absolute;z-index:500;bottom:12px;inset-inline:12px;background:#fff;border-radius:16px;padding:10px 14px;font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(0,0,0,.14);display:flex;align-items:center;gap:8px}
+.dmap .dcap b{font-size:20px;font-weight:900}
+.dmap .dcap .dot-live{color:var(--green)}
+.dmap .dcap svg.i{width:20px;height:20px}
+.dmap.off{filter:grayscale(.9);opacity:.7}
+.code-in{letter-spacing:.6em;text-align:center;font-size:26px!important;font-weight:700}
+.pushbar{display:flex;align-items:center;gap:12px;width:100%;text-align:start;background:#FFF4D6;border:1px solid #FFE2A0;border-radius:18px;padding:12px 14px;margin-top:14px;font:inherit;color:var(--ink);cursor:pointer}
+.pushbar .ic{width:42px;height:42px;border-radius:50%;background:#FFB020;color:#fff;display:grid;place-items:center;flex:none;animation:pulse 1.6s infinite}
+.pushbar b{font-weight:900;font-size:15.5px}.pushbar small{display:block;color:var(--muted);font-size:13px}
+.collect{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:#FFF4D6;font-weight:800}
+.collect b{font-size:20px;font-weight:900}.collect small{display:block;font-weight:600;color:var(--muted);font-size:12.5px}
+.collect.paid{background:var(--green-50,#E7F7EE);color:var(--green)}
+</style>
+</head>
+<body>
+<section class="auth" id="login" hidden>
+  <div class="bar"><span id="wBrand"></span><span class="muted" style="font-size:13.5px">مشاوير أقصر، دخل أوضح</span></div>
+  <div class="hero">
+    <div class="stack" style="gap:24px">
+      <div>
+        <span class="pill brand">كابتن جارك</span>
+        <h1 style="margin-top:14px">مشاوير قصيرة،<br>وأجرة واضحة</h1>
+        <p class="lede" id="wLede">كل الطلبات داخل حي واحد: من البقالة لبيت الجار في دقايق.</p>
+        <div class="showcase" aria-hidden="true"><div class="stamp"><span><b>1</b><small>حي واحد<br>بس</small></span></div>
+          <img src="/img/p/motor_scooter.webp" alt="" style="width:170px;right:0;top:20px;--d:.1s">
+          <img src="/img/p/money_bag.webp" alt="" style="width:80px;right:170px;top:96px;--d:.25s">
+          <img src="/img/p/stopwatch.webp" alt="" style="width:64px;right:240px;top:14px;--d:.4s">
+        </div>
+        <div class="badges"><span data-icon="check">أجرتك قدامك قبل تقبل</span><span data-icon="check">تحويل كل أسبوع</span><span data-icon="check">حي واحد بس</span></div>
+      </div>
+      <div class="calc">
+        <h2>كم تطلّع؟</h2>
+        <label class="q"><span>طلبات بالساعة</span><b class="num" id="cO">4</b></label>
+        <input type="range" id="cRo" min="2" max="6" step="1" value="4" aria-label="طلبات بالساعة">
+        <label class="q"><span>ساعات شغلك باليوم</span><b class="num" id="cH">8</b></label>
+        <input type="range" id="cRh" min="2" max="12" step="1" value="8" aria-label="ساعات باليوم">
+        <div class="out"><div><small>باليوم</small><b class="num" id="cD">—</b></div><div class="hl"><small>بالشهر (26 يوم)</small><b class="num" id="cM">—</b></div></div>
+        <p id="cNote">المسافات داخل الحي قصيرة، فتقدر توصّل طلبات أكثر بالساعة.</p>
+      </div>
+    </div>
+    <div class="stack" style="gap:16px">
+      <form class="login-card" id="loginForm">
+        <h2>دخول المندوب</h2>
+        <label class="field">جوالك<input type="tel" id="lPhone" class="ltr" placeholder="05xxxxxxxx" required autocomplete="tel"></label>
+        <div id="lCodeWrap" hidden class="stack" style="gap:8px"><small class="muted" id="lSent"></small><input type="text" id="lCode" class="in ltr code-in" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="····" aria-label="رمز الدخول"><div class="row" style="justify-content:space-between"><button type="button" class="btn btn-ghost btn-sm" id="lEdit">تعديل الرقم</button><button type="button" class="btn btn-ghost btn-sm" id="lResend" disabled>أرسل الرمز مرة ثانية</button></div></div>
+        <div class="err" id="lErr"></div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit">أرسل رمز الدخول</button>
+      </form>
+      <div id="wHood"></div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap" id="app" hidden>
+  <div class="hdr"><span class="mk" id="mk"></span><span class="sp"><small>كابتن جارك</small><h1 id="dName">المندوب</h1></span><button class="icon-btn" id="logout" type="button" aria-label="خروج" data-icon="logout"></button></div>
+  <button class="online" id="onlineBtn" type="button" aria-pressed="false"><span class="ic" data-icon="bike"></span><span class="sp"><b id="onlineTxt">أنت غير متصل</b><small id="onlineSub">اضغط وابدأ تستقبل الطلبات</small></span><span class="switch" role="presentation" id="onlineSw" aria-checked="false"></span></button>
+  <div id="pushBar"></div>
+  <div class="dmap" id="dMapBox"><div id="dMap"></div><div class="dcap" id="dCap"></div></div>
+  <div class="stats" id="stats"></div>
+  <div id="offers"></div>
+  <div id="jobs"></div>
+  <div id="idle"></div>
+  <p class="muted" style="font-size:13px;text-align:center;margin-top:16px">لا تسلّم الطلب إلا برمز التسليم من العميل.</p>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script src="/shared.js"></script>
+<script src="/livemap.js"></script>
+<script>
+(function(){
+'use strict';
+var $ = J.$, $$ = J.$$, esc = J.esc, I = J.icon;
+J.tokenKey = 'jarak-driver-token';
+var ME = null, OFFERS = [], JOBS = [], es = null, watch = null, lastPos = null, sendT = null, PAY = 4;
+J.onUnauthorized = function(){ J.store.set(J.tokenKey, null); showLogin(); };
+J.ROLE = 'driver'; J.paintIcons(); $('#wBrand').innerHTML = J.brand(); $('#mk').innerHTML = J.MARK;
+function calc(){ var o = +$('#cRo').value, h = +$('#cRh').value, d = o * h * PAY; $('#cO').textContent = o; $('#cH').textContent = h; $('#cD').textContent = Math.round(d).toLocaleString('en-US') + ' ر.س'; $('#cM').textContent = Math.round(d * 26).toLocaleString('en-US') + ' ر.س'; }
+$('#cRo').addEventListener('input', calc); $('#cRh').addEventListener('input', calc);
+function showLogin(){ $('#login').hidden = false; $('#app').hidden = true; calc();
+  J.loadPublic().then(function(p){ PAY = p.terms.driver_pay; calc();
+    $('#wLede').textContent = 'كل الطلبات داخل حي ' + p.zone.name + ': من البقالة لبيت الجار في دقايق.';
+    $('#cNote').textContent = 'على أجرة ' + PAY + ' ريال للطلب، وتزيد ' + p.terms.driver_pay_extra_pickup + ' ريال عن كل بقالة إضافية في نفس المشوار. المسافات قصيرة، فتقدر توصّل أكثر بالساعة.';
+    J.hood($('#wHood'), p, { you: { lat: p.zone.lat - 0.004, lng: p.zone.lng + 0.005 }, caption: 'كل المشاوير داخل حي ' + esc(p.zone.name) });
+  }).catch(function(){}); }
+J.otpLogin('/api/driver', function(t){ J.store.set(J.tokenKey, t); boot(); });
+function boot(){
+  J.api('/api/driver/me').then(function(j){
+    ME = j; $('#login').hidden = true; $('#app').hidden = false; $('#dName').textContent = j.driver.name;
+    paint(); load(); if (es) es.close();
+    es = J.sse('/api/driver/stream', function(m){ if (m.type === 'pos') { ME.driver.lat = m.lat; ME.driver.lng = m.lng; paintMap(); return; } if (m.type === 'offer') J.alarm(45, 'مشوار جديد'); if (m.type === 'job') { J.sound('success'); J.vibrate([150, 80, 150]); } load(); });
+    if (j.driver.online) startGps();
+  }).catch(function(){ showLogin(); });
+}
+function paintPush(){ var ok = J.pushState() === 'granted';
+  $('#pushBar').innerHTML = ok || !ME || !ME.driver.online ? '' : '<button class="pushbar" id="pushGo" type="button"><span class="ic">' + I('bell') + '</span><span class="sp"><b>فعّل التنبيهات</b><small>عشان يرن جوالك على كل مشوار حتى والتطبيق مقفول</small></span>' + I('back') + '</button>';
+  var g = $('#pushGo'); if (g) g.onclick = function(){ J.unlockSound(); J.sound('order'); J.enablePush('/api/driver/push', '/driver/sw.js', '/driver/').then(function(ok){ paintPush(); J.toast(ok ? 'التنبيهات شغّالة' : 'اسمح بالإشعارات من إعدادات المتصفح'); }); };
+}
+function paint(){
+  var on = ME.driver.online;
+  $('#onlineBtn').classList.toggle('on', on); $('#onlineBtn').setAttribute('aria-pressed', String(on)); $('#onlineSw').setAttribute('aria-checked', String(on));
+  $('#onlineTxt').textContent = on ? 'متصل' : 'أنت غير متصل';
+  $('#onlineSub').textContent = on ? 'الطلبات توصلك هنا مع رنّة' : 'اضغط وابدأ تستقبل الطلبات';
+  $('#stats').innerHTML = [['طلبات اليوم', ME.today.n], ['أجرة اليوم', J.sar(ME.today.pay)], ['لك ولسه ما تحوّل', J.sar(ME.due)]].map(function(x, i){ return '<div class="card stat"><small>' + x[0] + '</small><b class="num"' + (i === 2 ? ' style="color:var(--green)"' : '') + '>' + x[1] + '</b></div>'; }).join('');
+  paintIdle(); paintPush();
+}
+$('#onlineBtn').addEventListener('click', function(){
+  J.unlockSound();
+  var v = !ME.driver.online;
+  if (v) { J.enablePush('/api/driver/push', '/driver/sw.js', '/driver/').then(paintPush); J._awake = true; J.keepAwake(true); } else { J._awake = false; J.keepAwake(false); }
+  var go = function(p){ J.api('/api/driver/status', { method: 'POST', body: Object.assign({ online: v }, p || {}) }).then(function(){ ME.driver.online = v; paint(); if (v) startGps(); else stopGps(); }); };
+  if (v && navigator.geolocation) navigator.geolocation.getCurrentPosition(function(p){ go({ lat: p.coords.latitude, lng: p.coords.longitude }); }, function(){ J.toast('فعّل الموقع عشان توصلك الطلبات القريبة'); go(); }, { timeout: 8000 });
+  else go();
+});
+function startGps(){
+  if (!navigator.geolocation || watch != null) return;
+  watch = navigator.geolocation.watchPosition(function(p){ lastPos = { lat: p.coords.latitude, lng: p.coords.longitude }; ME.driver.lat = lastPos.lat; ME.driver.lng = lastPos.lng; paintMap(); }, function(){}, { enableHighAccuracy: true });
+  // وقت المشوار نرسل الموقع كل 5 ثواني عشان العميل يشوفك تتحرك، وغيره كل 20
+  clearInterval(sendT); var tick = 0; sendT = setInterval(function(){ tick++; if (!lastPos || (!JOBS.length && tick % 4)) return; J.api('/api/driver/status', { method: 'POST', body: lastPos }).catch(function(){}); }, 5000);
+}
+function stopGps(){ if (watch != null) navigator.geolocation.clearWatch(watch); watch = null; clearInterval(sendT); }
+function load(){
+  J.api('/api/driver/offers').then(function(r){ var now = Date.now(); OFFERS = r.offers.map(function(o){ o.deadline = now + o.seconds_left * 1000; return o; }); paintOffers(); });
+  J.api('/api/driver/jobs').then(function(r){ JOBS = r.jobs; paintJobs(); });
+  J.api('/api/driver/me').then(function(j){ ME = j; paint(); });
+}
+setInterval(function(){ if (ME) paintOffers(); }, 1000);
+setInterval(function(){ if (ME) load(); }, 20000);
+function paintOffers(){
+  OFFERS = OFFERS.filter(function(o){ return o.deadline > Date.now(); });
+  if (!OFFERS.length) J.stopAlarm();
+  $('#offers').innerHTML = OFFERS.map(function(o){
+    var left = Math.round((o.deadline - Date.now()) / 1000);
+    return '<div class="offer"><div class="row"><span class="pay num">' + J.money(o.pay) + '<small> ر.س</small></span><span class="sp"></span><span class="pill warn num">باقي ' + left + ' ث</span></div><div class="route">' + (o.stores || []).map(function(s){ return '<div>' + I('store') + '<span>استلام من <b>' + esc(s.name) + '</b></span></div>'; }).join('') + '<div>' + I('home') + '<span>التسليم داخل الحي، طلب #' + o.number + '</span></div></div><div class="row" style="flex-wrap:nowrap"><button class="btn btn-green btn-lg sp" data-acc="' + o.id + '">اقبل الطلب</button><button class="btn btn-lg" data-dec="' + o.id + '">لا</button></div></div>';
+  }).join('');
+  paintIdle();
+}
+$('#offers').addEventListener('click', function(e){
+  var a = e.target.closest('[data-acc]'), d = e.target.closest('[data-dec]'); if (!a && !d) return;
+  var id = (a || d).getAttribute(a ? 'data-acc' : 'data-dec'); J.stopAlarm();
+  J.api('/api/driver/offers/' + id, { method: 'POST', body: { accept: !!a } }).then(function(r){ J.toast(r.status === 'accepted' ? 'الطلب لك' : r.status === 'lost' ? 'سبقك مندوب ثاني' : 'تمام'); load(); }).catch(function(err){ J.toast(err.message); });
+});
+function paintJobs(){
+  $('#jobs').innerHTML = JOBS.map(function(o){
+    var all = o.parts.every(function(p){ return p.status === 'picked'; });
+    return '<div class="card job" data-order="' + o.id + '"><div class="hd"><b>#' + o.number + '</b><span class="pill ok num">' + J.sar(o.driver_pay) + '</span>' + (o.joined ? '<span class="pill night">مشوار جيران</span>' : '') + '<span class="sp"></span><span class="pill ' + (all ? 'night' : 'warn') + '">' + (all ? 'روح للعميل' : 'استلم من البقالات') + '</span></div>' +
+      o.parts.map(function(p){ var done = p.status === 'picked';
+        return '<div class="stop ' + (done ? 'done' : '') + '"><span class="ic">' + I(done ? 'check' : 'store') + '</span><span class="t"><b>' + esc(p.store_name) + '</b><br><small class="muted">' + p.count + ' قطعة' + (done ? '، استلمتها' : p.status === 'ready' ? '، جاهزة' : '، يجهّزونها') + '</small></span>' +
+          (done ? '' : p.status === 'ready' ? '<button class="btn btn-sm btn-primary" data-pick="' + p.id + '">استلمت</button>' : '') +
+          (done ? '' : '<a class="icon-btn" href="' + J.maps(p.lat, p.lng) + '" target="_blank" rel="noopener" aria-label="الطريق لـ ' + esc(p.store_name) + '">' + I('nav') + '</a>') + '</div>';
+      }).join('') +
+      '<div class="stop home"><span class="ic">' + I('home') + '</span><span class="t"><b>' + esc(o.customer_name || 'العميل') + '</b><br><small class="muted">' + esc(o.address_details || '') + '</small>' + (o.note ? '<br><small>ملاحظة: ' + esc(o.note) + '</small>' : '') + '</span><a class="icon-btn" href="tel:' + esc(o.customer_phone) + '" aria-label="اتصل بالعميل">' + I('phone') + '</a><a class="icon-btn" href="' + J.maps(o.lat, o.lng) + '" target="_blank" rel="noopener" aria-label="الطريق للعميل">' + I('nav') + '</a></div>' +
+      (o.payment_method === 'tab' ? '<div class="collect paid">' + I('check') + '<span class="sp">على دفتر العميل عند البقالة، لا تاخذ فلوس</span></div>' : o.payment_method === 'cod' ? '<div class="collect">' + I('cash') + '<span class="sp">حصّل من العميل <small>كاش أو شبكة</small></span><b class="num">' + J.sar(o.collect) + '</b></div>' : '<div class="collect paid">' + I('check') + '<span class="sp">مدفوع إلكترونياً، لا تاخذ فلوس</span></div>') + (all ? '<input class="in code-in ltr" data-code inputmode="numeric" maxlength="4" placeholder="····" aria-label="رمز التسليم من العميل"><button class="btn btn-saffron btn-block btn-lg" data-deliver="' + o.id + '">' + I('check') + 'سلّمت الطلب</button>' : '') + '</div>';
+  }).join('');
+  paintIdle();
+}
+var MAP = null;
+function paintIdle(){ paintMap(); }
+function paintMap(){
+  if (!ME) return;
+  var box = $('#dMapBox'), on = ME.driver.online; box.classList.toggle('off', !on);
+  J.loadPublic().then(function(pub){
+    if (!MAP) MAP = J.livemap($('#dMap'), { zoom: 15 });
+    var me = ME.driver.lat != null ? { lat: ME.driver.lat, lng: ME.driver.lng } : null, job = JOBS[0], off = OFFERS[0], pts = [], want = {};
+    if (me) { MAP.mark('me', 'driver', me.lat, me.lng, {}); want.me = 1; pts.push(me); }
+    var cap = '';
+    if (job) {
+      var left = job.parts.filter(function(p){ return p.status !== 'picked'; });
+      left.forEach(function(p){ MAP.mark('s' + p.id, 'store', p.lat, p.lng, { label: p.store_name }); want['s' + p.id] = 1; pts.push({ lat: p.lat, lng: p.lng }); });
+      MAP.mark('h' + job.id, 'home', job.lat, job.lng, { label: '#' + job.number }); want['h' + job.id] = 1; pts.push({ lat: job.lat, lng: job.lng });
+      var first = pts[1] && me ? J.etaMin([me, pts[1]]) : null;
+      cap = J.icon(left.length ? 'store' : 'home') + '<span class="sp">' + (left.length ? 'روح لـ ' + esc(left[0].store_name) : 'روح للعميل، طلب #' + job.number) + '</span>' + (first ? '<b class="num">' + first + '</b> د' : '');
+    } else if (off) {
+      (off.stores || []).forEach(function(st, i){ MAP.mark('o' + i, 'store', st.lat, st.lng, { label: st.name }); want['o' + i] = 1; pts.push({ lat: st.lat, lng: st.lng }); });
+      MAP.mark('oh', 'home', off.lat, off.lng, {}); want.oh = 1; pts.push({ lat: off.lat, lng: off.lng });
+      cap = J.icon('bike') + '<span class="sp">طلب جديد: ' + J.money(off.pay) + ' ر.س</span>' + (pts.length > 1 ? '<b class="num">' + J.etaMin(pts) + '</b> د' : '');
+    } else {
+      (pub.stores || []).forEach(function(st, i){ MAP.mark('z' + i, 'store', st.lat, st.lng, { state: st.open === false ? 'closed' : '' }); want['z' + i] = 1; });
+      cap = on ? '<span class="dot-live"></span><span class="sp">متصل، تنتظر طلب. خلّك قريب من البقالات</span>' : J.icon('bike') + '<span class="sp">اتصل عشان تبدأ تستقبل الطلبات</span>';
+    }
+    Object.keys(MAP.marks).forEach(function(k){ if (!want[k]) MAP.unmark(k); });
+    MAP.route(job || off ? pts : []);
+    var key = (job ? 'j' + job.id + job.parts.map(function(p){ return p.status; }).join() : off ? 'o' + off.id : 'idle') + (me ? 1 : 0);
+    if (MAP._key !== key) { MAP._key = key; setTimeout(function(){ MAP.fit([50, 70]); }, 80); }
+    $('#dCap').innerHTML = cap;
+  });
+}
+$('#jobs').addEventListener('click', function(e){
+  var p = e.target.closest('[data-pick]');
+  if (p) { p.disabled = true; J.api('/api/driver/parts/' + p.getAttribute('data-pick') + '/pickup', { method: 'POST' }).then(function(r){ J.toast(r.all_picked ? 'استلمت كل شي، روح للعميل' : 'تمام، كمّل الاستلام'); load(); }).catch(function(err){ J.toast(err.message); p.disabled = false; }); return; }
+  var d = e.target.closest('[data-deliver]');
+  if (d) { var code = d.closest('.job').querySelector('[data-code]').value; d.disabled = true;
+    J.api('/api/driver/orders/' + d.getAttribute('data-deliver') + '/deliver', { method: 'POST', body: { code: code } }).then(function(){ J.toast('تم التوصيل، يعطيك العافية'); load(); }).catch(function(err){ J.toast(err.message); d.disabled = false; }); }
+});
+$('#logout').addEventListener('click', function(){ J.api('/api/driver/status', { method: 'POST', body: { online: false } }).finally(function(){ J.store.set(J.tokenKey, null); stopGps(); showLogin(); }); });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/driver/sw.js', { scope: '/driver/' }).catch(function(){});
+if (J.store.get(J.tokenKey)) boot(); else showLogin();
+})();
+</script>
+</body>
+</html>

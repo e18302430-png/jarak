@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: jarak
+    runtime: node
+    plan: starter
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase: { name: jarak-db, property: connectionString }
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: OTP_PEPPER
+        generateValue: true
+      - key: DEMO
+        value: "0"
+      - key: PUBLIC_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MOYASAR_SECRET_KEY
+        sync: false
+      - key: MOYASAR_WEBHOOK_SECRET
+        sync: false
+      - key: SMS_PROVIDER
+        value: taqnyat
+      - key: TAQNYAT_TOKEN
+        sync: false
+      - key: TAQNYAT_SENDER
+        sync: false
+databases:
+  - name: jarak-db
+    plan: basic-256mb
