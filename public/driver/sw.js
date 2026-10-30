@@ -1,5 +1,5 @@
 // يخلّي واجهة التطبيق تفتح بسرعة وحتى لو النت ضعيف. الأسعار والطلبات دايماً من السيرفر.
-const CACHE = 'jarak-driver-v3';
+const CACHE = 'jarak-driver-v4';
 const SHELL = ['/driver/', '/shared.css', '/shared.js', '/driver/icon.svg', '/driver/manifest.webmanifest', '/fonts/rubik-arabic-500-normal.woff2', '/fonts/rubik-arabic-800-normal.woff2'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('jarak-driver-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

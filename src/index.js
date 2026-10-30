@@ -39,7 +39,7 @@ export async function createApp() {
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
   app.use(express.json({ limit: '8mb' }));
-  app.use((req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); res.set('Referrer-Policy', 'same-origin'); next(); });
+  app.use((req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); res.set('Referrer-Policy', 'strict-origin-when-cross-origin'); next(); });
 
   // ---------- public ----------
   app.get('/health', (_q, res) => res.json({ ok: true, db: dbKind(), ai: aiEnabled(), payments: paymentMode(), sms: process.env.SMS_PROVIDER || 'dev' }));
@@ -310,6 +310,19 @@ export async function createApp() {
      (select string_agg(s.name, '، ') from order_parts p join stores s on s.id=p.store_id where p.order_id=o.id and p.status <> 'cancelled') as stores
      from orders o join customers c on c.id=o.customer_id left join drivers d on d.id=o.driver_id ${req.query.status ? 'where o.status=$1' : ''} order by o.created_at desc limit 200`, req.query.status ? [req.query.status] : []) })));
   ad.get('/stores', wrap(async (_req, res) => res.json({ stores: await q(`select s.id, s.name, s.owner_phone, s.area, s.lat, s.lng, s.is_open, s.self_delivery, s.suspended, s.commission_pct, s.offers_n, s.accepted_n, s.respond_n, s.respond_ms_sum, s.rating_sum, s.rating_n, (select count(*)::int from store_products sp where sp.store_id=s.id and sp.available) as products from stores s order by s.created_at`) })));
+  // رابط قوقل ماب مختصر (maps.app.goo.gl): نفتحه من السيرفر ونطلع الإحداثيات منه
+  ad.get('/maplink', wrap(async (req, res) => {
+    const u = String(req.query.u || '').trim();
+    if (!/^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+)/.test(u)) throw bad('الصق رابط من قوقل ماب');
+    let text = u;
+    try {
+      const r = await fetch(u, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0', 'Accept-Language': 'ar' }, signal: AbortSignal.timeout(8000) });
+      text = r.url + ' ' + (await r.text()).slice(0, 200000);
+    } catch { /* نحاول من الرابط نفسه */ }
+    const m = text.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || text.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || text.match(/[?&](?:q|query|ll|center)=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/) || text.match(/\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/);
+    if (!m) throw bad('ما قدرنا نقرأ الموقع من الرابط. حدده على الخريطة');
+    res.json({ lat: Number(m[1]), lng: Number(m[2]) });
+  }));
   ad.post('/stores', wrap(async (req, res) => {
     const b = req.body, phone = normPhone(b.owner_phone), lat = num(b.lat), lng = num(b.lng);
     if (!b.name || !validSaudiMobile(phone)) throw bad('اسم البقالة وجوال صاحبها مطلوبين');

@@ -37,7 +37,7 @@
       var z = o.zone || (J.pub && J.pub.zone) || { lat: 26.2855, lng: 50.2105, radius_m: 1500 };
       var map = L.map(el, { zoomControl: false, attributionControl: true, dragging: o.interactive !== false, scrollWheelZoom: false, tap: true, zoomSnap: 0.25 }).setView([z.lat, z.lng], o.zoom || 15);
       var url = (J.pub && J.pub.tiles) || DEF_TILES, osm = /tile\.openstreetmap\.org/.test(url);
-      var tl = L.tileLayer(url, { subdomains: 'abcd', maxZoom: osm ? 19 : 20, detectRetina: !osm, className: osm ? 'osm-soft' : '', attribution: '© OpenStreetMap' + (/carto/.test(url) ? ' © CARTO' : /maptiler/.test(url) ? ' © MapTiler' : /stadia/.test(url) ? ' © Stadia' : '') }).addTo(map);
+      var tl = L.tileLayer(url, { referrerPolicy: 'strict-origin-when-cross-origin', subdomains: 'abcd', maxZoom: osm ? 19 : 20, detectRetina: !osm, className: osm ? 'osm-soft' : '', attribution: '© OpenStreetMap' + (/carto/.test(url) ? ' © CARTO' : /maptiler/.test(url) ? ' © MapTiler' : /stadia/.test(url) ? ' © Stadia' : '') }).addTo(map);
       var fails = 0; tl.on('tileerror', function(){ if (++fails > 3) el.classList.add('notiles'); }); tl.on('tileload', function(){ el.classList.remove('notiles'); });
       map.attributionControl.setPrefix(false);
       if (o.showZone !== false) L.circle([z.lat, z.lng], { radius: z.radius_m, color: '#111', weight: 1.5, dashArray: '6 6', fillColor: '#C5F12E', fillOpacity: 0.10, interactive: false }).addTo(map);
@@ -87,6 +87,38 @@
     (function step(t){ var k = Math.min(1, (t - t0) / D), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
       m.setLatLng([a.lat + (lat - a.lat) * e, a.lng + (lng - a.lng) * e]); if (k < 1) m._raf = requestAnimationFrame(step); })(t0);
   }
+
+  /* بحث عن أي حي أو مدينة أو شارع في السعودية (OpenStreetMap، مجاني) */
+  J.placeSearch = function(input, list, onPick){
+    var t = null, seq = 0;
+    function run(){
+      var v = input.value.trim(); if (v.length < 2) { list.innerHTML = ''; list.hidden = true; return; }
+      var ll = J.parseMapLink(v); if (ll) { list.hidden = true; onPick({ lat: ll.lat, lng: ll.lng, name: '' }); return; }
+      if (/^https?:\/\//.test(v)) { list.hidden = false; list.innerHTML = '<div class="ps-it muted">نقرأ الرابط…</div>';
+        J.api('/api/admin/maplink?u=' + encodeURIComponent(v)).then(function(r){ list.hidden = true; onPick({ lat: r.lat, lng: r.lng, name: '' }); }).catch(function(e){ list.innerHTML = '<div class="ps-it muted">' + J.esc(e.message) + '</div>'; }); return; }
+      var my = ++seq; list.hidden = false; list.innerHTML = '<div class="ps-it muted">نبحث…</div>';
+      fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=sa&accept-language=ar&addressdetails=1&limit=7&q=' + encodeURIComponent(v))
+        .then(function(r){ return r.json(); }).then(function(rows){
+          if (my !== seq) return;
+          if (!rows.length) { list.innerHTML = '<div class="ps-it muted">ما لقينا شي. جرّب: اسم الحي + المدينة، مثل «حي الربوة الرياض»</div>'; return; }
+          list.innerHTML = rows.map(function(x, i){ var a = x.address || {};
+            var title = a.suburb || a.neighbourhood || a.quarter || a.city_district || x.name || x.display_name.split(',')[0];
+            var city = a.city || a.town || a.village || a.state || '';
+            return '<button type="button" class="ps-it" data-i="' + i + '"><b>' + J.esc(title) + '</b><small>' + J.esc(x.display_name.split(',').slice(1, 4).join('،') || city) + '</small></button>'; }).join('');
+          list._rows = rows;
+        }).catch(function(){ if (my === seq) list.innerHTML = '<div class="ps-it muted">البحث ما اشتغل، تأكد من النت</div>'; });
+    }
+    input.addEventListener('input', function(){ clearTimeout(t); t = setTimeout(run, 700); });
+    input.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); clearTimeout(t); run(); } });
+    list.addEventListener('click', function(e){ var b = e.target.closest('[data-i]'); if (!b) return; var x = list._rows[+b.getAttribute('data-i')], a = x.address || {};
+      list.hidden = true; onPick({ lat: Number(x.lat), lng: Number(x.lon), name: a.suburb || a.neighbourhood || a.quarter || a.city_district || x.name || '', city: a.city || a.town || '', bbox: x.boundingbox }); });
+  };
+  J.parseMapLink = function(v){
+    var m = String(v).match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || String(v).match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || String(v).match(/[?&](?:q|query|ll)=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/) || String(v).match(/^\s*(-?\d{1,2}\.\d{3,})\s*[,،]\s*(-?\d{1,3}\.\d{3,})\s*$/);
+    return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
+  };
+  J.myLocation = function(){ return new Promise(function(res, rej){ if (!navigator.geolocation) return rej(new Error('جهازك ما يدعم تحديد الموقع'));
+    navigator.geolocation.getCurrentPosition(function(p){ res({ lat: p.coords.latitude, lng: p.coords.longitude }); }, function(){ rej(new Error('اسمح للمتصفح يعرف موقعك')); }, { enableHighAccuracy: true, timeout: 12000 }); }); };
   /* مسافة ووقت تقريبي داخل الحي */
   J.distM = function(a, b){ var R = 6371000, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
     var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) * Math.sin(dLng / 2); return 2 * R * Math.asin(Math.sqrt(x)); };

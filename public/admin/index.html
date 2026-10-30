@@ -88,6 +88,12 @@
 .howto{counter-reset:s;list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
 .howto li{counter-increment:s;display:grid;grid-template-columns:30px 1fr;gap:10px;font-size:14.5px}
 .howto li::before{content:counter(s);width:30px;height:30px;border-radius:50%;background:var(--brand-50);color:var(--brand);display:grid;place-items:center;font-weight:700}
+
+.ps{position:relative}
+.ps-list{position:absolute;inset-inline:0;top:calc(100% + 4px);z-index:1200;background:#fff;border:1px solid #E3E6EE;border-radius:14px;box-shadow:0 12px 30px rgba(17,17,17,.14);max-height:300px;overflow:auto}
+.ps-it{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:start;padding:10px 14px;border:0;border-bottom:1px solid #F0F2F6;background:none;font:inherit;cursor:pointer}
+.ps-it:hover{background:#F6F8EC}.ps-it small{color:#7A8094;font-size:12px}
+.pickmap{height:280px;border-radius:14px;overflow:hidden;margin-top:8px;background:#EEF1F5}
 </style>
 </head>
 <body>
@@ -140,6 +146,8 @@
         <div class="card sec stack" style="margin-top:0">
           <h2 style="margin:0">الحي اللي نخدمه</h2>
           <p class="muted" style="font-size:14px">نبدأ بحي واحد ونغطيه صح: كل البقالات فيه معنا، والمندوب ما يطلع منه. أي عميل برا الحي يدخل قائمة الانتظار، وتشوف هنا وين الطلب عليك عشان تعرف وين تتوسع بعده.</p>
+          <label class="field">ابحث عن الحي<div class="ps"><input type="search" id="zFind" placeholder="مثلاً: حي النرجس الرياض" autocomplete="off"><div class="ps-list" id="zFindL" hidden></div></div></label>
+          <button class="btn btn-sm" id="zMe" type="button">📍 أنا الحين في وسط الحي، خذ موقعي</button>
           <label class="field">اسم الحي<input type="text" id="zName"></label>
           <label class="field">نصف قطر الحي: <b id="zRv" class="num"></b><input type="range" id="zR" min="500" max="5000" step="100"></label>
           <div class="form" style="grid-template-columns:1fr 1fr"><label class="field">خط العرض<input type="text" id="zLat" class="ltr"></label><label class="field">خط الطول<input type="text" id="zLng" class="ltr"></label></div>
@@ -161,6 +169,7 @@
       <label class="field">جوال المالك<input type="tel" name="owner_phone" class="ltr" required></label>
       
       <label class="field">وصف المكان<input type="text" name="area" placeholder="الشارع أو أقرب معلم"></label>
+      <div class="field" style="grid-column:1/-1">موقع البقالة<div class="ps"><input type="search" id="sFind" placeholder="ابحث باسم الشارع، أو الصق رابط الموقع من قوقل ماب" autocomplete="off"><div class="ps-list" id="sFindL" hidden></div></div><div id="smap" class="pickmap"></div><small class="muted">اضغط على الخريطة على باب البقالة بالضبط. الدائرة هي حدود حيّك.</small></div>
       <label class="field">خط العرض<input type="text" name="lat" class="ltr" required placeholder="26.2852"></label>
       <label class="field">خط الطول<input type="text" name="lng" class="ltr" required placeholder="50.2098"></label>
     </div>
@@ -364,12 +373,12 @@ function loadZone(){
 function distM(a, b, c, d){ var R = 6371000, x = (d - b) * Math.PI / 180 * Math.cos((a + c) / 2 * Math.PI / 180), y = (c - a) * Math.PI / 180; return Math.sqrt(x * x + y * y) * R; }
 function drawMap(r, tries){
   var el = $('#zmap');
-  if (!window.L && (tries || 0) < 12) { setTimeout(function(){ drawMap(r, (tries || 0) + 1); }, 300); return; }
+  if (!window.L && !tries) { J.loadLeaflet().then(function(){ drawMap(r, 1); }, function(){ drawMap(r, 1); }); return; }
   if (!window.L) { J.hood(el, { zone: Z, stores: r.stores.filter(function(s){ return s.in_zone; }).map(function(s){ return { lat: s.lat, lng: s.lng, open: s.is_open }; }) }, { caption: 'حي ' + esc(Z.name) }); $('#zHint').textContent = 'الخريطة التفصيلية تحتاج نت. تقدر تكتب الإحداثيات يدوي.'; return; }
   if (!map) {
     el.innerHTML = ''; el.classList.remove('hood');
     map = L.map(el).setView([Z.lat, Z.lng], 14);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+    L.tileLayer((J.pub && J.pub.tiles) || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, referrerPolicy: 'strict-origin-when-cross-origin', attribution: '© OpenStreetMap' }).addTo(map);
     map.on('click', function(e){ $('#zLat').value = e.latlng.lat.toFixed(6); $('#zLng').value = e.latlng.lng.toFixed(6); syncCircle(); });
   }
   layers.forEach(function(l){ map.removeLayer(l); }); layers = [];
@@ -379,6 +388,34 @@ function drawMap(r, tries){
   map.fitBounds(circle.getBounds(), { padding: [20, 20] });
 }
 function syncCircle(){ var lat = Number($('#zLat').value), lng = Number($('#zLng').value), rad = Number($('#zR').value); $('#zRv').textContent = J.dist(rad); if (circle && isFinite(lat) && isFinite(lng)) { circle.setLatLng([lat, lng]); circle.setRadius(rad); } }
+function setZone(p){ $('#zLat').value = p.lat.toFixed(6); $('#zLng').value = p.lng.toFixed(6); if (p.name) $('#zName').value = p.name; syncCircle(); if (map) map.setView([p.lat, p.lng], 15); $('#zHint').textContent = 'تمام. تأكد إن الدائرة تغطي حيّك، وكبّرها أو صغّرها بالشريط، وبعدين احفظ.'; }
+J.placeSearch($('#zFind'), $('#zFindL'), setZone);
+$('#zMe').addEventListener('click', function(){ J.myLocation().then(setZone).catch(function(e){ J.toast(e.message); }); });
+/* خريطة اختيار موقع البقالة */
+var smap = null, spin = null;
+function initStoreMap(){
+  J.loadLeaflet().then(function(L){
+    var f = $('#storeForm');
+    if (!smap) {
+      var c = [Number(CFG.zone_lat), Number(CFG.zone_lng)];
+      smap = L.map($('#smap')).setView(c, 15);
+      L.tileLayer((J.pub && J.pub.tiles) || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, referrerPolicy: 'strict-origin-when-cross-origin', attribution: '© OpenStreetMap' }).addTo(smap);
+      smap._zone = L.circle(c, { radius: Number(CFG.zone_radius_m), color: '#111', weight: 1.5, dashArray: '6 6', fillColor: '#C5F12E', fillOpacity: .1, interactive: false }).addTo(smap);
+      smap.fitBounds(smap._zone.getBounds(), { padding: [10, 10] });
+      smap.on('click', function(e){ putStore(e.latlng.lat, e.latlng.lng, true); });
+      f.elements.lat.addEventListener('change', function(){ putStore(Number(f.elements.lat.value), Number(f.elements.lng.value)); });
+      f.elements.lng.addEventListener('change', function(){ putStore(Number(f.elements.lat.value), Number(f.elements.lng.value)); });
+    } else { smap._zone.setLatLng([Number(CFG.zone_lat), Number(CFG.zone_lng)]).setRadius(Number(CFG.zone_radius_m)); }
+    setTimeout(function(){ smap.invalidateSize(); }, 80);
+  });
+}
+function putStore(lat, lng, noPan){
+  if (!smap || !isFinite(lat) || !isFinite(lng)) return; var f = $('#storeForm');
+  f.elements.lat.value = Number(lat).toFixed(6); f.elements.lng.value = Number(lng).toFixed(6);
+  if (spin) spin.setLatLng([lat, lng]); else spin = L.marker([lat, lng], { draggable: true }).addTo(smap).on('dragend', function(e){ var p = e.target.getLatLng(); putStore(p.lat, p.lng, true); });
+  if (!noPan) smap.setView([lat, lng], 17);
+}
+J.placeSearch($('#sFind'), $('#sFindL'), function(p){ putStore(p.lat, p.lng); });
 $('#zR').addEventListener('input', syncCircle); $('#zLat').addEventListener('change', syncCircle); $('#zLng').addEventListener('change', syncCircle);
 $('#zSave').addEventListener('click', function(){ J.api('/api/admin/config', { method: 'PATCH', body: { zone_name: $('#zName').value, zone_lat: $('#zLat').value, zone_lng: $('#zLng').value, zone_radius_m: $('#zR').value } }).then(function(r){ CFG = r.config; $('#zonePill').textContent = 'حي ' + CFG.zone_name; J.toast('حفظنا الحي'); loadZone(); }).catch(function(err){ J.toast(err.message); }); });
 
@@ -387,11 +424,11 @@ var ST = { pending_payment: 'ينتظر الدفع', searching: 'نبحث عن �
 function loadOrders(){ J.api('/api/admin/orders').then(function(r){ $('#ordersT').innerHTML = '<tr><th>#</th><th>الحالة</th><th>البقالات</th><th>المندوب</th><th>دفع</th><th>رجع</th><th>الجولة</th><th>الوقت</th></tr>' + (r.orders.map(function(o){ return '<tr><td><b>' + o.number + '</b></td><td><span class="pill ' + (o.status === 'delivered' ? 'ok' : o.status === 'cancelled' ? 'bad' : 'warn') + '">' + (ST[o.status] || o.status) + '</span></td><td>' + esc(o.stores || '—') + '</td><td>' + esc(o.driver_name || '—') + '</td><td class="num">' + J.sar(o.quote_total) + '</td><td class="num">' + (Number(o.refunded_amount) ? J.sar(o.refunded_amount) : '—') + '</td><td class="num">' + o.dispatch_round + '</td><td>' + J.ago(o.created_at) + '</td></tr>'; }).join('') || '<tr><td colspan="8" class="muted">ما فيه طلبات للحين</td></tr>'); }); }
 function loadPhotos(){ J.api('/api/admin/photos').then(function(r){ $('#photosBox').hidden = !r.photos.length; $('#photosG').innerHTML = r.photos.map(function(p){ return '<div class="ph" data-ph="' + p.id + '"><div class="imgs"><img src="' + esc(p.current || '') + '" alt="الحالية"><img src="' + esc(p.path) + '" alt="الجديدة"></div><b>' + esc(p.name_ar) + ' <small>' + esc(p.size || '') + '</small></b><small>من ' + esc(p.store_name || '') + '، الجديدة على اليسار</small><div class="row"><button class="btn btn-sm btn-primary" data-ok="1">اعتمدها</button><button class="btn btn-sm" data-ok="0">ارفض</button></div></div>'; }).join(''); }); }
 $('#photosG').addEventListener('click', function(e){ var b = e.target.closest('[data-ok]'); if (!b) return; var ok = b.getAttribute('data-ok') === '1'; J.api('/api/admin/photos/' + b.closest('[data-ph]').getAttribute('data-ph'), { method: 'POST', body: { approve: ok } }).then(function(){ J.toast(ok ? 'اعتمدنا الصورة للعملاء' : 'رفضنا الصورة'); loadPhotos(); }); });
-function loadStores(){ loadPhotos(); J.api('/api/admin/stores').then(function(r){ $('#storesT').innerHTML = '<tr><th>البقالة</th><th>المنتجات</th><th>قبول</th><th>رد</th><th>تقييم</th><th>عمولة خاصة %</th><th></th></tr>' + r.stores.map(function(s){ return '<tr data-id="' + s.id + '"><td><b>' + esc(s.name) + '</b><br><small class="muted"><span class="ltr">' + esc(String(s.owner_phone).replace(/^966/, '0')) + '</span>' + (s.area ? '، ' + esc(s.area) : '') + '</small></td><td class="num">' + s.products + '</td><td class="num">' + (s.offers_n ? Math.round(s.accepted_n / s.offers_n * 100) + '%' : '—') + '</td><td class="num">' + (s.respond_n ? Math.round(s.respond_ms_sum / s.respond_n / 1000) + ' ث' : '—') + '</td><td class="num">' + (s.rating_n ? (s.rating_sum / s.rating_n).toFixed(1) : '—') + '</td><td><input class="in num" style="width:90px;min-height:38px;padding:4px 8px" data-comm value="' + (s.commission_pct != null ? s.commission_pct : '') + '" placeholder="' + CFG.commission_pct + '"></td><td><button class="btn btn-sm ' + (s.suspended ? '' : 'btn-danger') + '" data-susp="' + (!s.suspended) + '">' + (s.suspended ? 'شغّلها' : 'أوقفها') + '</button></td></tr>'; }).join(''); }); }
+function loadStores(){ loadPhotos(); initStoreMap(); J.api('/api/admin/stores').then(function(r){ $('#storesT').innerHTML = '<tr><th>البقالة</th><th>المنتجات</th><th>قبول</th><th>رد</th><th>تقييم</th><th>عمولة خاصة %</th><th></th></tr>' + r.stores.map(function(s){ return '<tr data-id="' + s.id + '"><td><b>' + esc(s.name) + '</b><br><small class="muted"><span class="ltr">' + esc(String(s.owner_phone).replace(/^966/, '0')) + '</span>' + (s.area ? '، ' + esc(s.area) : '') + '</small></td><td class="num">' + s.products + '</td><td class="num">' + (s.offers_n ? Math.round(s.accepted_n / s.offers_n * 100) + '%' : '—') + '</td><td class="num">' + (s.respond_n ? Math.round(s.respond_ms_sum / s.respond_n / 1000) + ' ث' : '—') + '</td><td class="num">' + (s.rating_n ? (s.rating_sum / s.rating_n).toFixed(1) : '—') + '</td><td><input class="in num" style="width:90px;min-height:38px;padding:4px 8px" data-comm value="' + (s.commission_pct != null ? s.commission_pct : '') + '" placeholder="' + CFG.commission_pct + '"></td><td><button class="btn btn-sm ' + (s.suspended ? '' : 'btn-danger') + '" data-susp="' + (!s.suspended) + '">' + (s.suspended ? 'شغّلها' : 'أوقفها') + '</button></td></tr>'; }).join(''); }); }
 $('#storesT').addEventListener('change', function(e){ if (!e.target.hasAttribute('data-comm')) return; var id = e.target.closest('tr').getAttribute('data-id'); J.api('/api/admin/stores/' + id, { method: 'PATCH', body: { commission_pct: e.target.value } }).then(function(){ J.toast('حفظنا العمولة'); }); });
 $('#storesT').addEventListener('click', function(e){ var b = e.target.closest('[data-susp]'); if (!b) return; var id = b.closest('tr').getAttribute('data-id'); J.api('/api/admin/stores/' + id, { method: 'PATCH', body: { suspended: b.getAttribute('data-susp') === 'true' } }).then(loadStores); });
 $('#storeForm').addEventListener('submit', function(e){ e.preventDefault(); var f = this, b = {}; new FormData(f).forEach(function(v, k){ b[k] = v; }); b.starter_prices = f.elements.starter_prices.checked; b.self_delivery = f.elements.self_delivery.checked;
-  J.api('/api/admin/stores', { method: 'POST', body: b }).then(function(){ J.toast('أضفنا البقالة. صاحبها يدخل من /store'); f.reset(); loadStores(); }).catch(function(err){ J.toast(err.message); }); });
+  J.api('/api/admin/stores', { method: 'POST', body: b }).then(function(){ J.toast('أضفنا البقالة. صاحبها يدخل من /store'); f.reset(); if (spin) { spin.remove(); spin = null; } $('#sFind').value = ''; loadStores(); }).catch(function(err){ J.toast(err.message); }); });
 function loadDrivers(){ J.api('/api/admin/drivers').then(function(r){ $('#driversT').innerHTML = '<tr><th>المندوب</th><th>الحالة</th><th>وصّل</th><th>تقييم</th></tr>' + r.drivers.map(function(d){ return '<tr><td><b>' + esc(d.name) + '</b><br><small class="muted"><span class="ltr">' + esc(String(d.phone).replace(/^966/, '0')) + '</span>' + (d.company ? '، ' + esc(d.company) : '') + '</small></td><td>' + (d.online ? '<span class="pill ok">متصل</span>' : '<span class="pill">غير متصل</span>') + '</td><td class="num">' + d.delivered + '</td><td class="num">' + (d.rating_n ? (d.rating_sum / d.rating_n).toFixed(1) : '—') + '</td></tr>'; }).join(''); }); }
 $('#driverForm').addEventListener('submit', function(e){ e.preventDefault(); var f = this, b = {}; new FormData(f).forEach(function(v, k){ b[k] = v; });
   J.api('/api/admin/drivers', { method: 'POST', body: b }).then(function(){ J.toast('أضفنا المندوب. يدخل من /driver'); f.reset(); loadDrivers(); }).catch(function(err){ J.toast(err.message); }); });
