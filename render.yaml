@@ -1,29 +1,31 @@
+# نسخة مجانية: خدمة Render المجانية + قاعدة بيانات Supabase المجانية
+# (الصور تنحفظ في قاعدة البيانات، فما نحتاج قرص)
 services:
   - type: web
     name: jarak
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm ci --omit=dev
     startCommand: node src/index.js
     healthCheckPath: /health
-    disk:
-      name: jarak-uploads
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase: { name: jarak-db, property: connectionString }
+        sync: false
       - key: ADMIN_TOKEN
         generateValue: true
       - key: OTP_PEPPER
         generateValue: true
       - key: DEMO
         value: "0"
-      - key: UPLOADS_DIR
-        value: /var/data/uploads
       - key: PUBLIC_URL
+        sync: false
+      - key: SMS_PROVIDER
+        value: dev
+      - key: TAQNYAT_TOKEN
+        sync: false
+      - key: TAQNYAT_SENDER
         sync: false
       - key: GEMINI_API_KEY
         sync: false
@@ -31,12 +33,3 @@ services:
         sync: false
       - key: MOYASAR_WEBHOOK_SECRET
         sync: false
-      - key: SMS_PROVIDER
-        value: taqnyat
-      - key: TAQNYAT_TOKEN
-        sync: false
-      - key: TAQNYAT_SENDER
-        sync: false
-databases:
-  - name: jarak-db
-    plan: basic-256mb

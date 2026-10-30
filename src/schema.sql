@@ -291,3 +291,7 @@ create table if not exists tab_entries (
   note text,
   created_at timestamptz not null default now()
 );
+
+-- صور البقالات تنحفظ في قاعدة البيانات نفسها، عشان تشتغل على أي استضافة حتى المجانية
+alter table product_photos add column if not exists data bytea;
+alter table product_photos add column if not exists mime text;

@@ -229,8 +229,8 @@ export async function createApp() {
     const p = await one('select id from products where id=$1', [req.params.pid]);
     if (!p) throw new HttpError(404, 'المنتج غير موجود');
     const name = crypto.randomUUID() + (img.mime === 'image/png' ? '.png' : img.mime === 'image/webp' ? '.webp' : '.jpg');
-    fs.mkdirSync(UPLOADS, { recursive: true }); fs.writeFileSync(path.join(UPLOADS, name), buf);
-    res.json({ photo: await one('insert into product_photos (product_id, store_id, path) values ($1,$2,$3) returning id, status', [p.id, req.store.id, '/img/u/' + name]) });
+    if (process.env.UPLOADS_DIR) { fs.mkdirSync(UPLOADS, { recursive: true }); fs.writeFileSync(path.join(UPLOADS, name), buf); }
+    res.json({ photo: await one('insert into product_photos (product_id, store_id, path, data, mime) values ($1,$2,$3,$4,$5) returning id, status', [p.id, req.store.id, '/img/u/' + name, buf, img.mime]) });
   }));
   st.delete('/products/:pid', wrap(async (req, res) => { await q('delete from store_products where store_id=$1 and product_id=$2', [req.store.id, req.params.pid]); res.json({ ok: true }); }));
   st.get('/earnings', wrap(async (req, res) => res.json({
@@ -301,7 +301,7 @@ export async function createApp() {
       { title: 'المناديب', ok: n.d >= 2, warn: n.d === 1, note: n.d + ' مندوب مسجّل' + (n.d < 2 ? '، الأفضل 2 أو أكثر' : '') },
       { title: 'الإشعارات والتنبيهات', ok: !!pushKey(), note: 'رنّة الطلبات شغّالة، والإشعارات توصل والتطبيق مقفول' },
       { title: 'كلمة سر الإدارة', ok: String(process.env.ADMIN_TOKEN || '').length >= 20, note: String(process.env.ADMIN_TOKEN || '').length >= 20 ? 'قوية' : 'قصيرة، خلها 20 حرف أو أكثر' },
-      { title: 'صور البقالات', ok: !!process.env.UPLOADS_DIR, warn: true, note: process.env.UPLOADS_DIR ? 'تنحفظ في ' + process.env.UPLOADS_DIR : 'اربط قرص دائم وحط UPLOADS_DIR عشان ما تضيع' }
+      { title: 'صور البقالات', ok: true, note: 'تنحفظ في قاعدة البيانات، ما تضيع مع التحديثات' }
     ] });
   }));
   ad.get('/live', wrap(async (_req, res) => res.json(await liveBoard())));
@@ -371,6 +371,11 @@ export async function createApp() {
   });
 
   app.use('/img/u', express.static(UPLOADS, { maxAge: '30d' }));
+  app.get('/img/u/:name', wrap(async (req, res, next) => {
+    const r = await one('select data, mime from product_photos where path=$1 and data is not null', ['/img/u/' + String(req.params.name).slice(0, 80)]);
+    if (!r) return next();
+    res.set('Content-Type', r.mime || 'image/jpeg').set('Cache-Control', 'public, max-age=2592000').send(Buffer.from(r.data));
+  }));
   app.use(express.static(path.join(here, '..', 'public'), { extensions: ['html'] }));
   if (!process.env.JARAK_NO_TIMERS) { const t = setInterval(() => sweep().catch(e => console.error('[sweep]', e)), 5000); t.unref?.(); }
   if (!process.env.JARAK_NO_TIMERS && process.env.DEMO === '1') { const t2 = setInterval(() => simTick(2).catch(e => console.error('[sim]', e)), 2000); t2.unref?.(); }
