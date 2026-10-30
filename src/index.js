@@ -13,6 +13,7 @@ import { respondOffer, respondDriver, sweep, clearTimers } from './dispatch.js';
 import * as O from './orders.js';
 import { parseBasket, aiEnabled, testAi } from './ai.js';
 import { distM } from './util.js';
+import { geoSearch, geoReverse } from './geo.js';
 import { initPush, subscribe, pushKey, pushTo } from './push.js';
 import { sendSms, smsProvider } from './sms.js';
 import * as H from './hood.js';
@@ -310,6 +311,12 @@ export async function createApp() {
      (select string_agg(s.name, '، ') from order_parts p join stores s on s.id=p.store_id where p.order_id=o.id and p.status <> 'cancelled') as stores
      from orders o join customers c on c.id=o.customer_id left join drivers d on d.id=o.driver_id ${req.query.status ? 'where o.status=$1' : ''} order by o.created_at desc limit 200`, req.query.status ? [req.query.status] : []) })));
   ad.get('/stores', wrap(async (_req, res) => res.json({ stores: await q(`select s.id, s.name, s.owner_phone, s.area, s.lat, s.lng, s.is_open, s.self_delivery, s.suspended, s.commission_pct, s.offers_n, s.accepted_n, s.respond_n, s.respond_ms_sum, s.rating_sum, s.rating_n, (select count(*)::int from store_products sp where sp.store_id=s.id and sp.available) as products from stores s order by s.created_at`) })));
+  ad.get('/geo', wrap(async (req, res) => res.json({ results: await geoSearch(req.query.q) })));
+  ad.get('/geo/rev', wrap(async (req, res) => {
+    const lat = Number(req.query.lat), lng = Number(req.query.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw bad('موقع غير صحيح');
+    res.json(await geoReverse(lat, lng));
+  }));
   // رابط قوقل ماب مختصر (maps.app.goo.gl): نفتحه من السيرفر ونطلع الإحداثيات منه
   ad.get('/maplink', wrap(async (req, res) => {
     const u = String(req.query.u || '').trim();

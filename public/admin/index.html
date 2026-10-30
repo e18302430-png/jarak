@@ -379,16 +379,26 @@ function drawMap(r, tries){
     el.innerHTML = ''; el.classList.remove('hood');
     map = L.map(el).setView([Z.lat, Z.lng], 14);
     L.tileLayer((J.pub && J.pub.tiles) || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, referrerPolicy: 'strict-origin-when-cross-origin', attribution: '© OpenStreetMap' }).addTo(map);
-    map.on('click', function(e){ $('#zLat').value = e.latlng.lat.toFixed(6); $('#zLng').value = e.latlng.lng.toFixed(6); syncCircle(); });
+    map.on('click', function(e){ setZone({ lat: e.latlng.lat, lng: e.latlng.lng }, true); });
   }
   layers.forEach(function(l){ map.removeLayer(l); }); layers = [];
-  circle = L.circle([Z.lat, Z.lng], { radius: Z.radius_m, color: '#C8372D', weight: 2, dashArray: '6 6', fillColor: '#EB3B2F', fillOpacity: .08 }).addTo(map); layers.push(circle);
+  circle = L.circle([Z.lat, Z.lng], { radius: Z.radius_m, interactive: false, color: '#C8372D', weight: 2, dashArray: '6 6', fillColor: '#EB3B2F', fillOpacity: .08 }).addTo(map); layers.push(circle);
   r.stores.forEach(function(s){ layers.push(L.circleMarker([s.lat, s.lng], { radius: 8, color: '#ffffff', weight: 2, fillColor: s.in_zone ? '#F2A93B' : '#9AA0BC', fillOpacity: 1 }).bindTooltip(s.name).addTo(map)); });
   r.waitlist.forEach(function(w){ layers.push(L.circleMarker([w.lat, w.lng], { radius: 5, color: '#C8372D', weight: 1, fillColor: '#C8372D', fillOpacity: .6 }).bindTooltip('ينتظر: ' + (w.details || '')).addTo(map)); });
   map.fitBounds(circle.getBounds(), { padding: [20, 20] });
 }
 function syncCircle(){ var lat = Number($('#zLat').value), lng = Number($('#zLng').value), rad = Number($('#zR').value); $('#zRv').textContent = J.dist(rad); if (circle && isFinite(lat) && isFinite(lng)) { circle.setLatLng([lat, lng]); circle.setRadius(rad); } }
-function setZone(p){ $('#zLat').value = p.lat.toFixed(6); $('#zLng').value = p.lng.toFixed(6); if (p.name) $('#zName').value = p.name; syncCircle(); if (map) map.setView([p.lat, p.lng], 15); $('#zHint').textContent = 'تمام. تأكد إن الدائرة تغطي حيّك، وكبّرها أو صغّرها بالشريط، وبعدين احفظ.'; }
+function setZone(p, noPan){
+  $('#zLat').value = p.lat.toFixed(6); $('#zLng').value = p.lng.toFixed(6); syncCircle();
+  if (map && !noPan) map.setView([p.lat, p.lng], 15);
+  if (p.name) { $('#zName').value = p.name; zoneHint(p.name, p.city); return; }
+  $('#zHint').textContent = 'نشوف وش اسم الحي هنا…';
+  J.whereIs(p.lat, p.lng).then(function(r){
+    if (r.name) { $('#zName').value = r.name; zoneHint(r.name, r.city); }
+    else $('#zHint').innerHTML = 'ما لقينا اسم للحي في هالنقطة' + (r.city ? ' (' + esc(r.city) + ')' : '') + '. اكتب اسمه بيدك في خانة «اسم الحي».';
+  }).catch(function(){ $('#zHint').textContent = 'حددنا الوسط. اكتب اسم الحي بيدك.'; });
+}
+function zoneHint(name, city){ $('#zHint').innerHTML = '✅ اخترت <b>' + esc(name) + '</b>' + (city ? '، ' + esc(city) : '') + '. تأكد إن الدائرة تغطي حيّك، وكبّرها أو صغّرها بالشريط، وبعدين اضغط «احفظ الحي».'; }
 J.placeSearch($('#zFind'), $('#zFindL'), setZone);
 $('#zMe').addEventListener('click', function(){ J.myLocation().then(setZone).catch(function(e){ J.toast(e.message); }); });
 /* خريطة اختيار موقع البقالة */
@@ -403,6 +413,7 @@ function initStoreMap(){
       smap._zone = L.circle(c, { radius: Number(CFG.zone_radius_m), color: '#111', weight: 1.5, dashArray: '6 6', fillColor: '#C5F12E', fillOpacity: .1, interactive: false }).addTo(smap);
       smap.fitBounds(smap._zone.getBounds(), { padding: [10, 10] });
       smap.on('click', function(e){ putStore(e.latlng.lat, e.latlng.lng, true); });
+      f.elements.area.addEventListener('input', function(){ this._auto = false; });
       f.elements.lat.addEventListener('change', function(){ putStore(Number(f.elements.lat.value), Number(f.elements.lng.value)); });
       f.elements.lng.addEventListener('change', function(){ putStore(Number(f.elements.lat.value), Number(f.elements.lng.value)); });
     } else { smap._zone.setLatLng([Number(CFG.zone_lat), Number(CFG.zone_lng)]).setRadius(Number(CFG.zone_radius_m)); }
@@ -414,6 +425,7 @@ function putStore(lat, lng, noPan){
   f.elements.lat.value = Number(lat).toFixed(6); f.elements.lng.value = Number(lng).toFixed(6);
   if (spin) spin.setLatLng([lat, lng]); else spin = L.marker([lat, lng], { draggable: true }).addTo(smap).on('dragend', function(e){ var p = e.target.getLatLng(); putStore(p.lat, p.lng, true); });
   if (!noPan) smap.setView([lat, lng], 17);
+  J.whereIs(lat, lng).then(function(r){ var a = f.elements.area; if (a && (!a.value || a._auto)) { a.value = [r.street, r.name].filter(Boolean).join('، '); a._auto = true; } }).catch(function(){});
 }
 J.placeSearch($('#sFind'), $('#sFindL'), function(p){ putStore(p.lat, p.lng); });
 $('#zR').addEventListener('input', syncCircle); $('#zLat').addEventListener('change', syncCircle); $('#zLng').addEventListener('change', syncCircle);

@@ -97,22 +97,21 @@
       if (/^https?:\/\//.test(v)) { list.hidden = false; list.innerHTML = '<div class="ps-it muted">نقرأ الرابط…</div>';
         J.api('/api/admin/maplink?u=' + encodeURIComponent(v)).then(function(r){ list.hidden = true; onPick({ lat: r.lat, lng: r.lng, name: '' }); }).catch(function(e){ list.innerHTML = '<div class="ps-it muted">' + J.esc(e.message) + '</div>'; }); return; }
       var my = ++seq; list.hidden = false; list.innerHTML = '<div class="ps-it muted">نبحث…</div>';
-      fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=sa&accept-language=ar&addressdetails=1&limit=7&q=' + encodeURIComponent(v))
-        .then(function(r){ return r.json(); }).then(function(rows){
-          if (my !== seq) return;
-          if (!rows.length) { list.innerHTML = '<div class="ps-it muted">ما لقينا شي. جرّب: اسم الحي + المدينة، مثل «حي الربوة الرياض»</div>'; return; }
-          list.innerHTML = rows.map(function(x, i){ var a = x.address || {};
-            var title = a.suburb || a.neighbourhood || a.quarter || a.city_district || x.name || x.display_name.split(',')[0];
-            var city = a.city || a.town || a.village || a.state || '';
-            return '<button type="button" class="ps-it" data-i="' + i + '"><b>' + J.esc(title) + '</b><small>' + J.esc(x.display_name.split(',').slice(1, 4).join('،') || city) + '</small></button>'; }).join('');
+      J.api('/api/admin/geo?q=' + encodeURIComponent(v)).then(function(r){
+          if (my !== seq) return; var rows = r.results || [];
+          if (!rows.length) { list.innerHTML = '<div class="ps-it muted">ما لقينا «' + J.esc(v) + '». اكتب اسم الحي ومعه المدينة، مثل «النور الدمام»، أو اضغط على الخريطة مباشرة</div>'; return; }
+          list.innerHTML = rows.map(function(x, i){ return '<button type="button" class="ps-it" data-i="' + i + '"><b>' + J.esc(x.name) + '</b><small>' + J.esc(x.city || '') + '</small></button>'; }).join('');
           list._rows = rows;
-        }).catch(function(){ if (my === seq) list.innerHTML = '<div class="ps-it muted">البحث ما اشتغل، تأكد من النت</div>'; });
+        }).catch(function(){ if (my === seq) list.innerHTML = '<div class="ps-it muted">البحث ما اشتغل الحين، حدّد بالضغط على الخريطة</div>'; });
     }
     input.addEventListener('input', function(){ clearTimeout(t); t = setTimeout(run, 700); });
     input.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); clearTimeout(t); run(); } });
-    list.addEventListener('click', function(e){ var b = e.target.closest('[data-i]'); if (!b) return; var x = list._rows[+b.getAttribute('data-i')], a = x.address || {};
-      list.hidden = true; onPick({ lat: Number(x.lat), lng: Number(x.lon), name: a.suburb || a.neighbourhood || a.quarter || a.city_district || x.name || '', city: a.city || a.town || '', bbox: x.boundingbox }); });
+    list.addEventListener('click', function(e){ var b = e.target.closest('[data-i]'); if (!b) return; var x = list._rows[+b.getAttribute('data-i')];
+      list.hidden = true; input.value = x.name + (x.city ? '، ' + x.city : ''); onPick({ lat: x.lat, lng: x.lng, name: x.name, city: x.city }); });
+    document.addEventListener('click', function(e){ if (!list.contains(e.target) && e.target !== input) list.hidden = true; });
   };
+  /* وش اسم الحي في هالنقطة */
+  J.whereIs = function(lat, lng){ return J.api('/api/admin/geo/rev?lat=' + lat + '&lng=' + lng); };
   J.parseMapLink = function(v){
     var m = String(v).match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || String(v).match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || String(v).match(/[?&](?:q|query|ll)=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/) || String(v).match(/^\s*(-?\d{1,2}\.\d{3,})\s*[,،]\s*(-?\d{1,3}\.\d{3,})\s*$/);
     return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
