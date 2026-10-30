@@ -335,10 +335,16 @@ export async function createApp() {
     if (!b.name || !validSaudiMobile(phone)) throw bad('اسم البقالة وجوال صاحبها مطلوبين');
     if (!(lat > 16 && lat < 33 && lng > 34 && lng < 56)) throw bad('حدد موقع البقالة');
     if (!inZone(await cfg(), lat, lng, 100)) throw bad('البقالة برا حدود الحي اللي نخدمه. وسّع الحي من صفحة «الحي» أو اختر بقالة داخله');
+    const dup = await one('select name from stores where owner_phone=$1', [phone]);
+    if (dup) throw bad(`الرقم هذا مسجّل لبقالة «${dup.name}». تأكد من الرقم، أو شوف البقالة في الجدول فوق`);
     const s = await one('insert into stores (name, owner_phone, pin_hash, lat, lng, area, self_delivery) values ($1,$2,$3,$4,$5,$6,$7) returning id, name', [b.name, phone, hashSecret(crypto.randomBytes(16).toString('hex')), lat, lng, b.area || null, !!b.self_delivery]);
     if (b.starter_prices) {
-      const prods = await q('select id, name_ar, size from products where active');
-      for (const p of prods) { const bp = basePrice(p.name_ar, p.size); if (bp) await q('insert into store_products (store_id, product_id, price, available, confidence) values ($1,$2,$3,true,0.6) on conflict do nothing', [s.id, p.id, bp]); }
+      const prods = (await q('select id, name_ar, size from products where active')).map(p => ({ id: p.id, price: basePrice(p.name_ar, p.size) })).filter(p => p.price);
+      // دفعة وحدة بدل استعلام لكل منتج (أسرع بكثير لما القاعدة بعيدة)
+      for (let i = 0; i < prods.length; i += 200) {
+        const part = prods.slice(i, i + 200), vals = part.map((_, k) => `($1,$${k * 2 + 2},$${k * 2 + 3},true,0.6)`).join(',');
+        await q(`insert into store_products (store_id, product_id, price, available, confidence) values ${vals} on conflict do nothing`, [s.id, ...part.flatMap(p => [p.id, p.price])]);
+      }
     }
     sendSms(phone, `هلا! ${b.name} صارت في جارك. ادخل تطبيقك من ${baseUrl(req)}/store/ برقم جوالك هذا، ويوصلك رمز الدخول.`).catch(e => console.error('[sms]', e.message));
     res.json({ store: s });
@@ -352,6 +358,8 @@ export async function createApp() {
   ad.post('/drivers', wrap(async (req, res) => {
     const phone = normPhone(req.body.phone);
     if (!req.body.name || !validSaudiMobile(phone)) throw bad('اسم المندوب وجواله مطلوبين');
+    const dupD = await one('select name from drivers where phone=$1', [phone]);
+    if (dupD) throw bad(`الرقم هذا مسجّل للمندوب «${dupD.name}»`);
     const d = await one('insert into drivers (name, phone, pin_hash, company) values ($1,$2,$3,$4) returning id, name', [req.body.name, phone, hashSecret(crypto.randomBytes(16).toString('hex')), req.body.company || null]);
     sendSms(phone, `هلا ${req.body.name}! صرت كابتن في جارك. ادخل من ${baseUrl(req)}/driver/ برقم جوالك هذا، ويوصلك رمز الدخول.`).catch(e => console.error('[sms]', e.message));
     res.json({ driver: d });
@@ -387,7 +395,9 @@ export async function createApp() {
   app.use('/api', (_req, res) => res.status(404).json({ error: 'غير موجود' }));
   app.use((err, _req, res, _next) => {
     if (err.status && err.status < 500) return res.status(err.status).json({ error: err.message, ...(err.code ? { code: err.code } : {}), ...(err.extra || {}), ...(err.quote ? { quote: err.quote } : {}) });
-    console.error(err); res.status(500).json({ error: 'صار خطأ عندنا، جرّب مرة ثانية' });
+    console.error('[error]', _req.method, _req.originalUrl, err);
+    const forAdmin = String(_req.originalUrl || '').startsWith('/api/admin');
+    res.status(500).json({ error: 'صار خطأ عندنا، جرّب مرة ثانية' + (forAdmin ? ' (التفاصيل: ' + String(err.message || err).slice(0, 160) + ')' : '') });
   });
 
   app.use('/img/u', express.static(UPLOADS, { maxAge: '30d' }));

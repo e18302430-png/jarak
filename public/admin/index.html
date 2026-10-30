@@ -93,7 +93,7 @@
 .ps-list{position:absolute;inset-inline:0;top:calc(100% + 4px);z-index:1200;background:#fff;border:1px solid #E3E6EE;border-radius:14px;box-shadow:0 12px 30px rgba(17,17,17,.14);max-height:300px;overflow:auto}
 .ps-it{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:start;padding:10px 14px;border:0;border-bottom:1px solid #F0F2F6;background:none;font:inherit;cursor:pointer}
 .ps-it:hover{background:#F6F8EC}.ps-it small{color:#7A8094;font-size:12px}
-.pickmap{height:280px;border-radius:14px;overflow:hidden;margin-top:8px;background:#EEF1F5}
+.pickmap{height:380px;border-radius:14px;overflow:hidden;margin-top:8px;background:#EEF1F5}
 </style>
 </head>
 <body>
@@ -156,7 +156,7 @@
         </div>
         <div class="card sec" style="margin-top:0"><h2>قائمة الانتظار: <span id="wN" class="num">0</span></h2><div class="tw"><table id="waitT"></table></div></div>
       </div>
-      <div id="zmap"></div>
+      <div><div class="row" style="margin-bottom:8px"><button class="btn btn-sm" id="zSat" type="button">🛰️ صورة قمر صناعي</button></div><div id="zmap"></div></div>
     </div>
   </section>
 
@@ -169,7 +169,7 @@
       <label class="field">جوال المالك<input type="tel" name="owner_phone" class="ltr" required></label>
       
       <label class="field">وصف المكان<input type="text" name="area" placeholder="الشارع أو أقرب معلم"></label>
-      <div class="field" style="grid-column:1/-1">موقع البقالة<div class="ps"><input type="search" id="sFind" placeholder="ابحث باسم الشارع، أو الصق رابط الموقع من قوقل ماب" autocomplete="off"><div class="ps-list" id="sFindL" hidden></div></div><div id="smap" class="pickmap"></div><small class="muted">اضغط على الخريطة على باب البقالة بالضبط. الدائرة هي حدود حيّك.</small></div>
+      <div class="field" style="grid-column:1/-1">موقع البقالة<div class="ps"><input type="search" id="sFind" placeholder="ابحث باسم الشارع، أو الصق رابط الموقع من قوقل ماب" autocomplete="off"><div class="ps-list" id="sFindL" hidden></div></div><div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap"><button class="btn btn-sm" id="sMe" type="button">📍 أنا واقف عند البقالة الحين</button><button class="btn btn-sm" id="sSat" type="button">🛰️ صورة قمر صناعي</button></div><div id="smap" class="pickmap"></div><small class="muted">قرّب الخريطة وشغّل «صورة قمر صناعي» عشان تشوف المباني، واضغط على مبنى البقالة. تقدر تسحب الدبوس لو تبي تعدّله. الدائرة هي حدود حيّك.</small></div>
       <label class="field">خط العرض<input type="text" name="lat" class="ltr" required placeholder="26.2852"></label>
       <label class="field">خط الطول<input type="text" name="lng" class="ltr" required placeholder="50.2098"></label>
     </div>
@@ -428,6 +428,12 @@ function putStore(lat, lng, noPan){
   J.whereIs(lat, lng).then(function(r){ var a = f.elements.area; if (a && (!a.value || a._auto)) { a.value = [r.street, r.name].filter(Boolean).join('، '); a._auto = true; } }).catch(function(){});
 }
 J.placeSearch($('#sFind'), $('#sFindL'), function(p){ putStore(p.lat, p.lng); });
+var SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+function satToggle(m, btn){ if (!m) return; if (m._sat) { m.removeLayer(m._sat); m._sat = null; btn.textContent = '🛰️ صورة قمر صناعي'; return; }
+  m._sat = L.tileLayer(SAT, { maxZoom: 19, attribution: 'Esri' }).addTo(m); btn.textContent = '🗺️ رجّع الخريطة العادية'; if (m.getZoom() < 17) m.setZoom(17); }
+$('#sSat').addEventListener('click', function(){ satToggle(smap, this); });
+$('#zSat').addEventListener('click', function(){ satToggle(map, this); });
+$('#sMe').addEventListener('click', function(){ var b = this; b.disabled = true; J.myLocation().then(function(p){ putStore(p.lat, p.lng); }).catch(function(e){ J.toast(e.message); }).then(function(){ b.disabled = false; }); });
 $('#zR').addEventListener('input', syncCircle); $('#zLat').addEventListener('change', syncCircle); $('#zLng').addEventListener('change', syncCircle);
 $('#zSave').addEventListener('click', function(){ J.api('/api/admin/config', { method: 'PATCH', body: { zone_name: $('#zName').value, zone_lat: $('#zLat').value, zone_lng: $('#zLng').value, zone_radius_m: $('#zR').value } }).then(function(r){ CFG = r.config; $('#zonePill').textContent = 'حي ' + CFG.zone_name; J.toast('حفظنا الحي'); loadZone(); }).catch(function(err){ J.toast(err.message); }); });
 
@@ -440,7 +446,9 @@ function loadStores(){ loadPhotos(); initStoreMap(); J.api('/api/admin/stores').
 $('#storesT').addEventListener('change', function(e){ if (!e.target.hasAttribute('data-comm')) return; var id = e.target.closest('tr').getAttribute('data-id'); J.api('/api/admin/stores/' + id, { method: 'PATCH', body: { commission_pct: e.target.value } }).then(function(){ J.toast('حفظنا العمولة'); }); });
 $('#storesT').addEventListener('click', function(e){ var b = e.target.closest('[data-susp]'); if (!b) return; var id = b.closest('tr').getAttribute('data-id'); J.api('/api/admin/stores/' + id, { method: 'PATCH', body: { suspended: b.getAttribute('data-susp') === 'true' } }).then(loadStores); });
 $('#storeForm').addEventListener('submit', function(e){ e.preventDefault(); var f = this, b = {}; new FormData(f).forEach(function(v, k){ b[k] = v; }); b.starter_prices = f.elements.starter_prices.checked; b.self_delivery = f.elements.self_delivery.checked;
-  J.api('/api/admin/stores', { method: 'POST', body: b }).then(function(){ J.toast('أضفنا البقالة. صاحبها يدخل من /store'); f.reset(); if (spin) { spin.remove(); spin = null; } $('#sFind').value = ''; loadStores(); }).catch(function(err){ J.toast(err.message); }); });
+  if (!b.lat || !b.lng) { J.toast('حدد مكان البقالة على الخريطة أول'); return; }
+  var btn = f.querySelector('[type=submit]'); btn.disabled = true; btn.textContent = 'نحفظ البقالة…';
+  J.api('/api/admin/stores', { method: 'POST', body: b }).finally(function(){ btn.disabled = false; btn.textContent = 'أضف البقالة'; }).then(function(){ J.toast('أضفنا البقالة. صاحبها يدخل من /store'); f.reset(); if (spin) { spin.remove(); spin = null; } $('#sFind').value = ''; loadStores(); }).catch(function(err){ J.toast(err.message); }); });
 function loadDrivers(){ J.api('/api/admin/drivers').then(function(r){ $('#driversT').innerHTML = '<tr><th>المندوب</th><th>الحالة</th><th>وصّل</th><th>تقييم</th></tr>' + r.drivers.map(function(d){ return '<tr><td><b>' + esc(d.name) + '</b><br><small class="muted"><span class="ltr">' + esc(String(d.phone).replace(/^966/, '0')) + '</span>' + (d.company ? '، ' + esc(d.company) : '') + '</small></td><td>' + (d.online ? '<span class="pill ok">متصل</span>' : '<span class="pill">غير متصل</span>') + '</td><td class="num">' + d.delivered + '</td><td class="num">' + (d.rating_n ? (d.rating_sum / d.rating_n).toFixed(1) : '—') + '</td></tr>'; }).join(''); }); }
 $('#driverForm').addEventListener('submit', function(e){ e.preventDefault(); var f = this, b = {}; new FormData(f).forEach(function(v, k){ b[k] = v; });
   J.api('/api/admin/drivers', { method: 'POST', body: b }).then(function(){ J.toast('أضفنا المندوب. يدخل من /driver'); f.reset(); loadDrivers(); }).catch(function(err){ J.toast(err.message); }); });
